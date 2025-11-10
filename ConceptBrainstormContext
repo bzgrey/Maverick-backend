@@ -1,0 +1,262 @@
+[@concept-specifications](design/background/concept-specifications.md)
+
+[@concept-design-overview](design/background/concept-design-overview.md)
+
+[@concept-design-brief](design/background/concept-design-brief.md)
+
+# Create concepts for this app idea:
+
+### Problem framing
+
+The problem framing is like the one you did for the personal project, augmented with the ethics analysis, which subsumes the stakeholder analysis. In your personal project, you listed only 3 features. For your team project, we encourage you to brainstorm a longer list from which you can draw the most promising in your functional design. Since the ethical analysis is new, a full explanation of the steps involved is provided in a [separate document](https://61040-fa25.github.io/assignments/final-project-ethical-analysis).
+
+- Domain: a description of the general domain you’re interested in.
+    
+
+School / Scheduling - As students going to the same school all of us need to optimize and schedule our different activities.
+
+- Problem: an outline of the problem your app will address.
+    
+
+We are constantly facing challenges of optimizing and coordinating schedules with others. We want to take the same schedules as friends, but asking every single friend and then physically comparing can be hard to coordinate.
+
+- Evidence: evidence that the problem is real and experienced by others. (individual)
+    
+
+- [This](https://calendly.com/resources/guides/2024-state-of-meetings-report?utm_source=chatgpt.com) is a study done by calendly that shows that people lose a lot of time scheduling meetings. Similarly, time could be lost coordinating with people taking the same classes at same times. (Benny)
+    
+- In [this](https://arxiv.org/abs/2309.09684?utm_source=chatgpt.com) paper, researchers found that for 177 students, a student may prefer to enroll in a course they like less in order to take it with their friends, rather than being alone in a more preferred class (Benny)
+    
+- [This](https://www.coursedog.com/whitepaper/aacrao-a-comprehensive-view-of-undergraduate-class-scheduling-practice-policy-data-use-and-technology) report on undergraduate class scheduling revealed that only 27% of institutions agreed their scheduling process was “student-centred,” indicating many students face schedules designed without their coordination needs in mind, particularly coordinating classes and schedules with one another. (Betsegaw)
+    
+- This issue isn’t just due to lack of effort from people, we can see that mathematically from a theoretical perspective scheduling even one event in several people’s schedules is statistically improbable. Applying the results found from a [statistical analysis study](https://link.springer.com/article/10.1140/epjb/s10051-024-00742-z), an arbitrary planning for one single event with ten different options for four busy people is roughly 8% (Giani).
+    
+- The impact of a successful peer study group formation is critical to not only the academic success of students, but their social-emotional well being as well. A [meta-analysis](https://pmc.ncbi.nlm.nih.gov/articles/PMC3052992/) regarding peer groups and their related support system finds that it is crucial for people to be able to schedule time with peer groups, as it was significantly correlated with a decrease in depression levels (Giani).
+    
+
+- Comparables: notes about existing solutions to the problem or related problems. (individual)
+    
+
+- [https://hydrant.mit.edu/](https://hydrant.mit.edu/) is a website used by MIT students to organize their class schedules. Clearly, students care about their schedules, so something that connects them with friends schedules would probably be useful. (Benny)
+    
+- [https://www.joinsaturn.com/](https://www.joinsaturn.com/) is a social calendar app for high school students that lets them view class schedules, see which friends share their classes, and organize school events — showing that students value not just managing their time, but connecting their schedules with friends. However, Saturn has faced privacy challenges, including weak user verification and exposure of students’ names, class schedules, and social media links, highlighting the need for stronger privacy safeguards such as verified school emails and tighter data controls, which they have implemented in part but not thoroughly. (Betsegaw) 
+    
+- [https://www.coursicle.com](https://www.coursicle.com/): a schedule planning app that supports a wide number of universities, allowing students to plan their schedules and sync them with friends. The problem is has been having is that students have to manually enter in classes if they aren’t in the system already and there is little to no presence of MIT students with the application. Clear example of the need to have a scheduling application, just one more ingrained with MIT system to provide easy access to students (Giani).
+    
+-   
+    
+
+- Features: possible features to address the problem.
+    
+
+- Group Scheduling (group >= 2, course groups, extracurriculars, living group) - allows students to view schedules for everyone within a group that they can join
+    
+- Friends - A user can become friends with someone else and then view their schedule or the similarity between their schedule and all of their other friends
+    
+- Schedule similarities (between courses, not times now) - view the similarity between your schedule and other people’s schedules, whether friends or in a group.
+    
+- “Ranking” scheduled items (“likely to take”, “definitely taking”)- Add tags to selected courses to reflect likelihood of actually taking a course at that time. Flags include (“not likely”, “likely”, “definitely”). 
+    
+
+- Search by filter for example only show “definitely” taking courses or only show “definitely”+”likely” taking courses
+    
+
+- MIT Schedule Syncing - Having to manually input your schedule into the application could cause friction and prevent users from using the application, but with a Hydrant/CourseRoad syncing users could export their classes directly to the application
+    
+-   
+    
+
+- [Ethical analysis](https://61040-fa25.github.io/assignments/final-project-ethical-analysis): an identification of stakeholders and the impacts they might experience. (individual)
+    
+
+- Time
+    
+- Stakeholders
+    
+- Pervasiveness
+    
+- Values
+    
+- One non-targeted use of the app that could adversely affect stakeholders is that stalkers or other bad actors could use it as a way to know where those they are stalking are at what time. This could be partially solved by having authentication to individual Universitiy bodies as well as only allowing someone to see another’s schedule if they have them as friends. (Benny)
+    
+- Stakeholders — prompt: indirect impacts / Feature: Schedule Visibility + Friends.
+    
+
+Observation: Instructors and advisors could use visibility data to identify collaboration opportunities, but could also (mis)interpret social clustering as performance predictors, affecting advising and grading biases.
+
+Design response: Limit administrative access by requiring explicit consent for instructors/advisors to view aggregate student networks, and only provide de-identified, aggregated analytics for course planning. (Betsegaw)
+
+- Time — prompt: short/medium/long effects / Feature: Friends & Group Scheduling.
+    
+
+Observation: Short-term convenience (coordinating study groups) can creep into long-term social sorting: students may cluster classes with friends, narrowing exposure to diverse peers and reducing serendipitous academic exploration, which employers of these students and the broader society would have valued as a variety of perspectives and ways of thinking can help create innovative solutions.
+
+Design response: Add “diversity nudges” that highlight courses outside a user’s friend cluster and offer anonymized friend-overlap statistics to encourage broader enrollment choices. (Betsegaw)
+
+- Values — prompt: Choose Desired Values / Feature: Schedule Visibility
+    
+
+Observation: A key value for the application must be privacy and ensuring that students’ schedules are only visible for the intended audiences. A problem that can occur when granting schedule visibility access to a group of students (the majority of which the student gets along with), is that there may be a different user they specifically don’t get along with.
+
+Design response: Within schedule visibility add a blacklisting capability, that allows users to white list entire groups (instead of all the users individually) and blacklist any specific users they want (Giani).
+
+  
+  
+  
+
+Work split problem framing:  
+Each 2 evidence
+
+Each 1 comparable
+
+Each 1 ethical insight (someone do 2 (and only one evidence)
+
+**
+# response:
+
+Excellent questions. Let's break this down.
+
+### Part 1: How to make sure your concepts are independent?
+
+Based on the provided documentation, ensuring concept independence is the most critical aspect of this design methodology. It's achieved by rigorously adhering to a few key principles and tests during the design process.
+
+Here is a checklist to ensure your concepts are independent:
+
+**1. The Single, Indivisible Purpose Test**
+A concept must have one, and only one, reason to exist. If its purpose statement contains the word "and," it's a major red flag that it might be two concepts masquerading as one.
+
+*   **Bad Example:** A concept with the purpose "manage a user's profile information **and** their friend connections."
+*   **Good Solution:** Create two separate concepts:
+    *   `UserProfile [User]` with the purpose "manage a user's publicly visible information (bio, name, etc.)."
+    *   `Friendship [User]` with the purpose "manage mutual, consent-based relationships between users."
+
+**2. The State Overlap Test**
+The state of one concept should never be directly managed or duplicated by another. Each piece of information should have a single source of truth in exactly one concept.
+
+*   **Bad Example:**
+    *   `UserAuthentication` state: `a set of Users with a username String`
+    *   `UserProfile` state: `a set of Users with a username String, a bio String`
+    *   *Problem:* The `username` is defined in two places. If it needs to be changed, which concept is responsible? This creates ambiguity and dependency.
+*   **Good Solution:**
+    *   `UserAuthentication` state: `a set of Users with a loginIdentifier String, a password String`
+    *   `UserProfile` state: `a set of Users with a displayName String, a bio String`
+    *   The application layer treats the `loginIdentifier` and `displayName` as distinct, even if they are often the same for the user. One concept owns each piece of data.
+
+**3. The Polymorphic Parameter Test (The "Opaque ID" Rule)**
+This is the central mechanism for enforcing independence. A concept can only know about the *existence* of entities defined by its type parameters (e.g., `User`, `Target`), but it can know *nothing* about their internal properties. It treats them as opaque identifiers or references.
+
+*   **Bad Example:** An action in a `Comment [User, Target]` concept has a precondition like `requires user.isModerator == true`.
+    *   *Problem:* This requires the `Comment` concept to know about a property (`isModerator`) of the `User` type. This property is almost certainly managed by a different concept (e.g., `Authorization` or `Roles`). This creates a direct dependency on the internal state of another concept.
+*   **Good Solution:** The application logic would first query the `Authorization` concept to check if a user is a moderator. If so, it would then call a specific action in the `Comment` concept, like `moderatorDeleteComment(moderator: User, comment: Comment)`. The `Comment` concept only needs to know it was called by an authorized actor; it doesn't check the authorization itself.
+
+**4. The No-Direct-Calls Test**
+Actions within one concept must **never** call actions in another concept. The coordination of concepts is the responsibility of a higher-level orchestrator (e.g., the application's business logic, a UI event handler). Concepts broadcast changes to their state, but they don't command other concepts to act.
+
+*   **Bad Example:** The `effects` of a `createAccount` action in `UserAuthentication` includes "call `createProfile` action in `UserProfile` concept."
+*   **Good Solution:** The application UI has a "Sign Up" button. When clicked, its handler first calls `UserAuthentication.register(...)`. If successful, it receives a new `user` ID. The handler then uses that `user` ID to call `UserProfile.createProfile(user: newUserId, ...)` as a separate, subsequent step.
+
+By applying these four tests, you can ensure that each concept is a self-contained, behaviorally complete, and reusable unit of functionality that does not create hidden dependencies in your system.
+
+---
+
+### Part 2: Concepts for the Scheduling App
+
+Based on your problem framing, here are four initial concepts designed according to the specified structure. They are independent but can be orchestrated by an application to deliver the required features.
+
+#### Concept 1: User Authentication
+
+This is a foundational concept for any multi-user application.
+
+*   **concept**: UserAuthentication [User]
+*   **purpose**: To create user identities and securely verify them upon return.
+*   **principle**: If a user registers with a unique school email and a password, and later provides the same credentials to log in, they will be granted access as that registered user.
+*   **state**:
+    `a set of Users with`
+      `email: String`
+      `passwordHash: String`
+*   **actions**:
+    `register (email: String, password: String): (user: User)`
+      **requires** `email` must be a valid school email (e.g., ends in ".edu") and must not already be associated with an existing `User`.
+      **effects** A new `User` is created. The `email` is stored and a secure hash of the `password` is stored as `passwordHash`, both associated with the new `User`. The new `User`'s ID is returned.
+
+    `login (email: String, password: String): (user: User)`
+      **requires** A `User` exists with the given `email` and the hash of the provided `password` matches the stored `passwordHash`.
+      **effects** The ID of the authenticated `User` is returned.
+
+#### Concept 2: Friendship
+
+This concept models the social graph, which is central to your app's value proposition.
+
+*   **concept**: Friendship [User]
+*   **purpose**: To manage mutual, consent-based social connections between users.
+*   **principle**: If User A sends a friend request to User B, and User B accepts the request, then User A and User B will appear on each other's friends list.
+*   **state**:
+    `pendingRequests: a set of (requester: User, requestee: User)`
+    `friends: a set of {user1: User, user2: User}` (a symmetric relationship)
+*   **actions**:
+    `requestFriend (requester: User, requestee: User)`
+      **requires** `requester` and `requestee` are not already friends. A pending request from `requester` to `requestee` does not already exist. `requester` is not `requestee`.
+      **effects** Adds the pair (`requester`, `requestee`) to the `pendingRequests` set.
+
+    `acceptFriend (requester: User, requestee: User)`
+      **requires** A pending request from `requester` to `requestee` exists.
+      **effects** Removes the pair (`requester`, `requestee`) from `pendingRequests`. Adds the pair `{requester, requestee}` to the `friends` set.
+
+    `removeFriend (remover: User, removed: User)`
+      **requires** `remover` and `removed` are friends.
+      **effects** Removes the pair `{remover, removed}` from the `friends` set.
+
+#### Concept 3: User Schedule
+
+This concept manages what courses a user is planning to take and their level of commitment.
+
+*   **concept**: UserSchedule [User, Course]
+*   **purpose**: To enable a user to build a potential class schedule and express their commitment level for each course, facilitating coordination with others.
+*   **principle**: After a user adds several courses to their schedule with different commitment levels (e.g., "definitely," "likely"), another user viewing their schedule can filter it to see only the courses they are "definitely" taking.
+*   **state**:
+    `a set of Users with`
+      `a schedule set of ScheduleItem`
+    `a set of ScheduleItems with`
+      `course: Course`
+      `commitment: String` (values like "definitely", "likely", "considering")
+*   **actions**:
+    `addCourse (user: User, course: Course, commitment: String)`
+      **requires** The `user` does not already have the specified `course` in their schedule. The `commitment` string is one of the allowed values.
+      **effects** A new `ScheduleItem` is created with the given `course` and `commitment`. This item is added to the `schedule` set for the specified `user`.
+
+    `updateCommitment (user: User, course: Course, newCommitment: String)`
+      **requires** The `user` has the specified `course` in their schedule. The `newCommitment` string is one of the allowed values.
+      **effects** The `commitment` of the `ScheduleItem` corresponding to the `user`'s `course` is updated to `newCommitment`.
+
+    `removeCourse (user: User, course: Course)`
+      **requires** The `user` has the specified `course` in their schedule.
+      **effects** The `ScheduleItem` corresponding to the `course` is removed from the `user`'s `schedule` set.
+
+#### Concept 4: Visibility Control
+
+This directly addresses the ethical concern raised about privacy and blacklisting.
+
+*   **concept**: VisibilityControl [User]
+*   **purpose**: To empower users to prevent specific individuals from viewing their information, even if they are in a shared group or context.
+*   **principle**: If User A blocks User B, then even if they are both members of the same group, any application feature that tries to show User A's schedule to User B will fail or show nothing.
+*   **state**:
+    `blockList: a set of (blocker: User, blocked: User)`
+*   **actions**:
+    `blockUser (blocker: User, userToBlock: User)`
+      **requires** The pair (`blocker`, `userToBlock`) is not already in the `blockList`. `blocker` is not `userToBlock`.
+      **effects** Adds the pair (`blocker`, `userToBlock`) to the `blockList`.
+
+    `unblockUser (blocker: User, userToUnblock: User)`
+      **requires** The pair (`blocker`, `userToUnblock`) exists in the `blockList`.
+      **effects** Removes the pair (`blocker`, `userToUnblock`) from the `blockList`.
+
+**How they work together (orchestration):**
+
+An application feature like "View a friend's 'definite' courses" would work like this:
+
+1.  The app logic gets the current `loggedInUser` and the `friendUser` they want to view.
+2.  It queries the `VisibilityControl` concept: "Does a block exist from `friendUser` (as blocker) to `loggedInUser` (as blocked)?"
+3.  If a block exists, the app shows an error or a "schedule is private" message.
+4.  If no block exists, it queries the `UserSchedule` concept: "Get all `ScheduleItem`s for `friendUser`."
+5.  The application logic then filters this list in its own code, keeping only the items where `commitment` is "definitely".
+6.  Finally, it displays the filtered list of courses to the `loggedInUser`.
