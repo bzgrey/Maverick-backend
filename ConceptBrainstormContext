@@ -11,100 +11,100 @@
 The problem framing is like the one you did for the personal project, augmented with the ethics analysis, which subsumes the stakeholder analysis. In your personal project, you listed only 3 features. For your team project, we encourage you to brainstorm a longer list from which you can draw the most promising in your functional design. Since the ethical analysis is new, a full explanation of the steps involved is provided in a [separate document](https://61040-fa25.github.io/assignments/final-project-ethical-analysis).
 
 - Domain: a description of the general domain you’re interested in.
-    
+
 
 School / Scheduling - As students going to the same school all of us need to optimize and schedule our different activities.
 
 - Problem: an outline of the problem your app will address.
-    
+
 
 We are constantly facing challenges of optimizing and coordinating schedules with others. We want to take the same schedules as friends, but asking every single friend and then physically comparing can be hard to coordinate.
 
 - Evidence: evidence that the problem is real and experienced by others. (individual)
-    
+
 
 - [This](https://calendly.com/resources/guides/2024-state-of-meetings-report?utm_source=chatgpt.com) is a study done by calendly that shows that people lose a lot of time scheduling meetings. Similarly, time could be lost coordinating with people taking the same classes at same times. (Benny)
-    
+
 - In [this](https://arxiv.org/abs/2309.09684?utm_source=chatgpt.com) paper, researchers found that for 177 students, a student may prefer to enroll in a course they like less in order to take it with their friends, rather than being alone in a more preferred class (Benny)
-    
+
 - [This](https://www.coursedog.com/whitepaper/aacrao-a-comprehensive-view-of-undergraduate-class-scheduling-practice-policy-data-use-and-technology) report on undergraduate class scheduling revealed that only 27% of institutions agreed their scheduling process was “student-centred,” indicating many students face schedules designed without their coordination needs in mind, particularly coordinating classes and schedules with one another. (Betsegaw)
-    
+
 - This issue isn’t just due to lack of effort from people, we can see that mathematically from a theoretical perspective scheduling even one event in several people’s schedules is statistically improbable. Applying the results found from a [statistical analysis study](https://link.springer.com/article/10.1140/epjb/s10051-024-00742-z), an arbitrary planning for one single event with ten different options for four busy people is roughly 8% (Giani).
-    
+
 - The impact of a successful peer study group formation is critical to not only the academic success of students, but their social-emotional well being as well. A [meta-analysis](https://pmc.ncbi.nlm.nih.gov/articles/PMC3052992/) regarding peer groups and their related support system finds that it is crucial for people to be able to schedule time with peer groups, as it was significantly correlated with a decrease in depression levels (Giani).
-    
+
 
 - Comparables: notes about existing solutions to the problem or related problems. (individual)
-    
+
 
 - [https://hydrant.mit.edu/](https://hydrant.mit.edu/) is a website used by MIT students to organize their class schedules. Clearly, students care about their schedules, so something that connects them with friends schedules would probably be useful. (Benny)
-    
+
 - [https://www.joinsaturn.com/](https://www.joinsaturn.com/) is a social calendar app for high school students that lets them view class schedules, see which friends share their classes, and organize school events — showing that students value not just managing their time, but connecting their schedules with friends. However, Saturn has faced privacy challenges, including weak user verification and exposure of students’ names, class schedules, and social media links, highlighting the need for stronger privacy safeguards such as verified school emails and tighter data controls, which they have implemented in part but not thoroughly. (Betsegaw) 
-    
+
 - [https://www.coursicle.com](https://www.coursicle.com/): a schedule planning app that supports a wide number of universities, allowing students to plan their schedules and sync them with friends. The problem is has been having is that students have to manually enter in classes if they aren’t in the system already and there is little to no presence of MIT students with the application. Clear example of the need to have a scheduling application, just one more ingrained with MIT system to provide easy access to students (Giani).
-    
--   
-    
+
+-
+
 
 - Features: possible features to address the problem.
-    
+
 
 - Group Scheduling (group >= 2, course groups, extracurriculars, living group) - allows students to view schedules for everyone within a group that they can join
-    
+
 - Friends - A user can become friends with someone else and then view their schedule or the similarity between their schedule and all of their other friends
-    
+
 - Schedule similarities (between courses, not times now) - view the similarity between your schedule and other people’s schedules, whether friends or in a group.
-    
+
 - “Ranking” scheduled items (“likely to take”, “definitely taking”)- Add tags to selected courses to reflect likelihood of actually taking a course at that time. Flags include (“not likely”, “likely”, “definitely”). 
-    
+
 
 - Search by filter for example only show “definitely” taking courses or only show “definitely”+”likely” taking courses
-    
+
 
 - MIT Schedule Syncing - Having to manually input your schedule into the application could cause friction and prevent users from using the application, but with a Hydrant/CourseRoad syncing users could export their classes directly to the application
-    
--   
-    
+
+-
+
 
 - [Ethical analysis](https://61040-fa25.github.io/assignments/final-project-ethical-analysis): an identification of stakeholders and the impacts they might experience. (individual)
-    
+
 
 - Time
-    
+
 - Stakeholders
-    
+
 - Pervasiveness
-    
+
 - Values
-    
+
 - One non-targeted use of the app that could adversely affect stakeholders is that stalkers or other bad actors could use it as a way to know where those they are stalking are at what time. This could be partially solved by having authentication to individual Universitiy bodies as well as only allowing someone to see another’s schedule if they have them as friends. (Benny)
-    
+
 - Stakeholders — prompt: indirect impacts / Feature: Schedule Visibility + Friends.
-    
+
 
 Observation: Instructors and advisors could use visibility data to identify collaboration opportunities, but could also (mis)interpret social clustering as performance predictors, affecting advising and grading biases.
 
 Design response: Limit administrative access by requiring explicit consent for instructors/advisors to view aggregate student networks, and only provide de-identified, aggregated analytics for course planning. (Betsegaw)
 
 - Time — prompt: short/medium/long effects / Feature: Friends & Group Scheduling.
-    
+
 
 Observation: Short-term convenience (coordinating study groups) can creep into long-term social sorting: students may cluster classes with friends, narrowing exposure to diverse peers and reducing serendipitous academic exploration, which employers of these students and the broader society would have valued as a variety of perspectives and ways of thinking can help create innovative solutions.
 
 Design response: Add “diversity nudges” that highlight courses outside a user’s friend cluster and offer anonymized friend-overlap statistics to encourage broader enrollment choices. (Betsegaw)
 
 - Values — prompt: Choose Desired Values / Feature: Schedule Visibility
-    
+
 
 Observation: A key value for the application must be privacy and ensuring that students’ schedules are only visible for the intended audiences. A problem that can occur when granting schedule visibility access to a group of students (the majority of which the student gets along with), is that there may be a different user they specifically don’t get along with.
 
 Design response: Within schedule visibility add a blacklisting capability, that allows users to white list entire groups (instead of all the users individually) and blacklist any specific users they want (Giani).
 
-  
-  
-  
 
-Work split problem framing:  
+
+
+
+Work split problem framing:
 Each 2 evidence
 
 Each 1 comparable
@@ -249,6 +249,10 @@ This directly addresses the ethical concern raised about privacy and blacklistin
     `unblockUser (blocker: User, userToUnblock: User)`
       **requires** The pair (`blocker`, `userToUnblock`) exists in the `blockList`.
       **effects** Removes the pair (`blocker`, `userToUnblock`) from the `blockList`.
+
+    **quieres**
+    `_isUserBlocked(primaryUser: User, secondaryUser: User)`
+      **effects** Returns ture if (primaryUser, secondaryUser) pair exists in blockList, false otherwise
 
 **How they work together (orchestration):**
 
