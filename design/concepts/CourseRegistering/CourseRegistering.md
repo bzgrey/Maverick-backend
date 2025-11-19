@@ -26,8 +26,8 @@
     * **effects**: Returns all `Registration` records for the given `student`, along with the corresponding `Course` details for each registration.
 * **actions**:
   * `defineCourse (name: String, lecture: MeetingTime, recitation?: MeetingTime): (course: Course)`
-    * **requires**: For each meeting time provided, `startTime < endTime`. 
-    * **effects**: Creates a new course in the catalog with defined lecture and optional recitation times. This is typically an administrative action. 
+    * **requires**: For each meeting time provided, `startTime < endTime`.
+    * **effects**: Creates a new course in the catalog with defined lecture and optional recitation times. This is typically an administrative action.
   * `addCourse (student: Student, course: Course)`
     * **requires**: The course must exist. The student must not already be registered for this course. The lecture and recitation times of the specified `course` must not have a time conflict with the lecture or recitation times of any other course for which the `student` has an existing `Registration`.
     * **effects**: Creates a new `Registration` linking the `student` and the `course`.
