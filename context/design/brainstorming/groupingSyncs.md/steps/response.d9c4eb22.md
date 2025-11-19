@@ -1,0 +1,227 @@
+---
+timestamp: 'Tue Nov 18 2025 22:15:18 GMT-0500 (Eastern Standard Time)'
+parent: '[[../20251118_221518.db42728f.md]]'
+content_id: d9c4eb22615ee9a5af7384b79bf67cb2fc605485939f2f24ff1b1c4a823bff05
+---
+
+# response:
+
+```sync
+sync CreateGroupRequest
+when
+	Requesting.request (path: "/groups/create", session, groupName: string) : (request)
+where
+	in Sessioning: _getUser (session) gets user: { id: string, username: string }
+then
+	Grouping.createGroup (owner: user, name: groupName)
+
+sync CreateGroupResponse
+when
+	Requesting.request (path: "/groups/create") : (request)
+	Grouping.createGroup () : (group: { id: string, name: string, ownerId: string })
+then
+	Requesting.respond (request, group)
+
+sync CreateGroupResponseError
+when
+	Requesting.request (path: "/groups/create") : (request)
+	Grouping.createGroup () : (error: { code: string, message: string })
+then
+	Requesting.respond (request, error)
+```
+
+***
+
+## `src/syncs/grouping/add_member.sync.ts`
+
+```sync
+sync AddMemberRequest
+when
+	Requesting.request (path: "/groups/addMember", session, groupId: string, memberId: string) : (request)
+where
+	in Sessioning: _getUser (session) gets requester: { id: string, username: string }
+	in User: _getUserById (id: memberId) gets memberToAdd: { id: string, username: string }
+	in Grouping: _getGroup (id: groupId) gets group: { id: string, name: string, ownerId: string } with owner: groupOwner: { id: string, username: string }
+	// Permission check: Only the group owner can add members.
+	requester.id is groupOwner.id
+	// Blocking check: Neither the requester nor the memberToAdd should have blocked the other.
+	in Blocking: not _isBlocked (userA: memberToAdd, userB: requester)
+	in Blocking: not _isBlocked (userA: requester, userB: memberToAdd)
+then
+	Grouping.addMember (group: group, member: memberToAdd)
+
+sync AddMemberResponse
+when
+	Requesting.request (path: "/groups/addMember") : (request)
+	Grouping.addMember () : (success: { message: string, addedMemberId: string }) // Returns a success status and the ID of the added member.
+then
+	Requesting.respond (request, success)
+
+sync AddMemberResponseError
+when
+	Requesting.request (path: "/groups/addMember") : (request)
+	Grouping.addMember () : (error: { code: string, message: string })
+then
+	Requesting.respond (request, error)
+```
+
+***
+
+## `src/syncs/grouping/remove_member.sync.ts`
+
+```sync
+sync RemoveMemberRequest
+when
+	Requesting.request (path: "/groups/removeMember", session, groupId: string, memberId: string) : (request)
+where
+	in Sessioning: _getUser (session) gets requester: { id: string, username: string }
+	in User: _getUserById (id: memberId) gets memberToRemove: { id: string, username: string }
+	in Grouping: _getGroup (id: groupId) gets group: { id: string, name: string, ownerId: string } with owner: groupOwner: { id: string, username: string }
+	// Permission check: Requester is either the group owner OR the member themselves.
+	(requester.id is groupOwner.id) or (requester.id is memberToRemove.id)
+then
+	Grouping.removeMember (group: group, member: memberToRemove)
+
+sync RemoveMemberResponse
+when
+	Requesting.request (path: "/groups/removeMember") : (request)
+	Grouping.removeMember () : (success: { message: string, removedMemberId: string }) // Returns a success status and the ID of the removed member.
+then
+	Requesting.respond (request, success)
+
+sync RemoveMemberResponseError
+when
+	Requesting.request (path: "/groups/removeMember") : (request)
+	Grouping.removeMember () : (error: { code: string, message: string })
+then
+	Requesting.respond (request, error)
+```
+
+***
+
+## `src/syncs/grouping/delete_group.sync.ts`
+
+```sync
+sync DeleteGroupRequest
+when
+	Requesting.request (path: "/groups/delete", session, groupId: string) : (request)
+where
+	in Sessioning: _getUser (session) gets requester: { id: string, username: string }
+	in Grouping: _getGroup (id: groupId) gets group: { id: string, name: string, ownerId: string } with owner: groupOwner: { id: string, username: string }
+	// Permission check: Only the group owner can delete the group.
+	requester.id is groupOwner.id
+then
+	Grouping.deleteGroup (group: group)
+
+sync DeleteGroupResponse
+when
+	Requesting.request (path: "/groups/delete") : (request)
+	Grouping.deleteGroup () : (success: { message: string, deletedGroupId: string }) // Returns a success status and the ID of the deleted group.
+then
+	Requesting.respond (request, success)
+
+sync DeleteGroupResponseError
+when
+	Requesting.request (path: "/groups/delete") : (request)
+	Grouping.deleteGroup () : (error: { code: string, message: string })
+then
+	Requesting.respond (request, error)
+```
+
+***
+
+## `src/syncs/grouping/get_group_members.sync.ts`
+
+```sync
+// Scenario 1: Group has members, respond with them
+sync GetGroupMembersRequestWithMembers
+when
+	Requesting.request (path: "/groups/members", session, groupId: string) : (request)
+where
+	in Sessioning: _getUser (session) gets requester: { id: string, username: string }
+	in Grouping: _getGroup (id: groupId) gets group: { id: string, name: string, ownerId: string }
+	// Permission check: Requester must be a member of the group to view its members.
+	in Grouping: _isMember (group: group, member: requester)
+	in Grouping: _getMembersCount (group: group) gets count: number
+	count > 0 // Ensure there is at least one member
+	// Query for members and their usernames, each producing a frame
+	in Grouping: _getMembers (group: group) gets member: { id: string }
+	in User: _getUsername (user: member) gets memberUsername: string // Changed 'memberName' to 'memberUsername' for explicit naming
+	// Collect all members and their names into a single `results` array, grouped by request.
+	// Each item in `results` will be an object like: { member: { id: string }, memberUsername: string }
+	results is frames.collectAs([member, memberUsername], results)
+then
+	Requesting.respond (request, results: array< { member: { id: string }, memberUsername: string } >) // Updated type to 'memberUsername'
+
+// Scenario 2: Group has no members, but request was valid, respond with empty array
+sync GetGroupMembersRequestNoMembers
+when
+	Requesting.request (path: "/groups/members", session, groupId: string) : (request)
+where
+	in Sessioning: _getUser (session) gets requester: { id: string, username: string }
+	in Grouping: _getGroup (id: groupId) gets group: { id: string, name: string, ownerId: string }
+	in Grouping: _isMember (group: group, member: requester)
+	in Grouping: _getMembersCount (group: group) gets count: number
+	count is 0 // Ensure there are no members
+	results is [] // Explicitly bind an empty array to the results variable
+then
+	Requesting.respond (request, results: array<any>)
+
+// Scenario 3: Request failed due to an error in a concept action (e.g., group not found, permission error if _isMember provided an error output)
+sync GetGroupMembersResponseError
+when
+	Requesting.request (path: "/groups/members") : (request)
+	// Catches any error output from concept actions like _getUser, _getGroup, _isMember, _getMembersCount, _getMembers, _getUsername.
+	// The specific concept action outputting the error is not specified here, allowing for general error handling.
+	AnyConceptAction() : (error: { code: string, message: string }) // Assuming a generic error output from any relevant concept action
+then
+	Requesting.respond (request, error)
+```
+
+***
+
+## `src/syncs/grouping/get_my_groups.sync.ts`
+
+```sync
+// Scenario 1: User is a member of one or more groups
+sync GetMyGroupsRequestWithGroups
+when
+	Requesting.request (path: "/groups/my-groups", session) : (request)
+where
+	in Sessioning: _getUser (session) gets requester: { id: string, username: string }
+	in Grouping: _getGroupsCountForUser (user: requester) gets count: number
+	count > 0 // Ensure the user is a member of at least one group
+	// Query for groups the user is a member of
+	in Grouping: _getGroupsForUser (user: requester) gets group: { id: string }
+	// For each group, get its name and owner details
+	in Grouping: _getGroupDetails (group: group) gets groupName: string, groupOwner: { id: string }
+	// For each group owner, get their username
+	in User: _getUsername (user: groupOwner) gets groupOwnerUsername: string // Changed 'ownerName' to 'groupOwnerUsername' for explicit naming
+	// Collect all group details into a single `results` array.
+	// Each item in `results` will be an object like: { group: { id: string }, groupName: string, groupOwner: { id: string }, groupOwnerUsername: string }
+	results is frames.collectAs([group, groupName, groupOwner, groupOwnerUsername], results)
+then
+	Requesting.respond (request, results: array< { group: { id: string }, groupName: string, groupOwner: { id: string }, groupOwnerUsername: string } >) // Updated type to 'groupOwnerUsername'
+
+// Scenario 2: User is not a member of any groups
+sync GetMyGroupsRequestNoGroups
+when
+	Requesting.request (path: "/groups/my-groups", session) : (request)
+where
+	in Sessioning: _getUser (session) gets requester: { id: string, username: string }
+	in Grouping: _getGroupsCountForUser (user: requester) gets count: number
+	count is 0 // Ensure the user is not a member of any group
+	results is [] // Explicitly bind an empty array to the results variable
+then
+	Requesting.respond (request, results: array<any>)
+
+// Scenario 3: Request failed due to an error in a concept action
+sync GetMyGroupsResponseError
+when
+	Requesting.request (path: "/groups/my-groups") : (request)
+	// Catches any error output from concept actions like _getUser, _getGroupsCountForUser, _getGroupsForUser, _getGroupDetails, _getUsername.
+	// The specific concept action outputting the error is not specified here, allowing for general error handling.
+	AnyConceptAction() : (error: { code: string, message: string }) // Assuming a generic error output from any relevant concept action
+then
+	Requesting.respond (request, error)
+```

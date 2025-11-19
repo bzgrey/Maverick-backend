@@ -7,7 +7,7 @@
     *   a set of `Group`s with
         *   a `name` String
         *   a `members` set of User
-        *   a `memberRoles` map from unique ID to Role (`ADMIN` | `MEMBER`)
+        *   a `memberRoles` map from User to Role (`ADMIN` | `MEMBER`)
         *   a `requests` set of User (e.g., `User` requesting to join)
 
 *   **actions**:
@@ -40,15 +40,27 @@
     *   **requires**: `group` exists, `group.members` contains `member`, and `newRole` is `ADMIN` | `MEMBER`
     *   **effects**: updates `group.memberRoles` for `member` to be `newRole`
 
+*   `removeMember (group: Group, member: User)`
+    *   **requires**: `group` exists, `group.members` contains `member`
+    *   **effects**: remove `member` from `group.memberRoles`
+
 *   **queries**:
 
-*   `_getMembers (group: Group): (member: User)`
+*   `_getMembers (group: Group): (members: set of User)`
     *   **requires** `group` exists
     *   **effects** returns the set of all users in the `members` set of the given `group`
 
-*   `_getAdmins (group: Group): (admin: User)`
+*   `isGroupMember (group: Group, user: User): (inGroup: bool)`
+    *   **requires** `group` exists
+    *   **effects** returns true if `user` in `group.members` else false
+
+*   `_getAdmins (group: Group): (admins: set of User)`
     *   **requires** `group` exists
     *   **effects** returns the set of all users in the `admins` set of the given `group`
+
+*   `isGroupAdmin (group: Group, user: User): (isAdmin: bool)`
+    *   **requires** `group` exists
+    *   **effects** returns true if `user` in `group.members` and has `ADMIN` in `group.memberRoles`.
 
 *   `_getRequests (group: Group): (requestingUser: User)`
     *   **requires** `group` exists
@@ -57,3 +69,7 @@
 *   `_getGroupByName (name: String): (group: Group)`
     *   **requires** a group `g` with `g.name = name` exists
     *   **effects** returns the group `g`
+
+*   `_getUserGroups (user: User): (group: set of Group)`
+    *   **requires** `user` is a member within an existing group
+    *   **effects** returns set `group` such that each have `user` in `group.members`

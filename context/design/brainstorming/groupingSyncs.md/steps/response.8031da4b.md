@@ -1,0 +1,229 @@
+---
+timestamp: 'Tue Nov 18 2025 21:55:29 GMT-0500 (Eastern Standard Time)'
+parent: '[[../20251118_215529.5808258c.md]]'
+content_id: 8031da4bdad0b4cddc5444126bfdf00933915e1bd88b1758a94fdf2cecd718e6
+---
+
+# response:
+
+Here are the synchronization specifications for the `Grouping` concept, following the provided DSL format and considering `Sessioning` for user identity and `Blocking` for mutual blocking checks where appropriate.
+
+***
+
+### `src/syncs/grouping/create_group.sync.ts`
+
+```sync
+sync CreateGroupRequest
+when
+	Requesting.request (path: "/groups/create", session, groupName) : (request)
+where
+	in Sessioning: _getUser (session) gets user
+then
+	Grouping.createGroup (owner: user, name: groupName)
+
+sync CreateGroupResponse
+when
+	Requesting.request (path: "/groups/create") : (request)
+	Grouping.createGroup () : (group)
+then
+	Requesting.respond (request, group)
+
+sync CreateGroupResponseError
+when
+	Requesting.request (path: "/groups/create") : (request)
+	Grouping.createGroup () : (error)
+then
+	Requesting.respond (request, error)
+```
+
+***
+
+### `src/syncs/grouping/add_member.sync.ts`
+
+```sync
+sync AddMemberRequest
+when
+	Requesting.request (path: "/groups/addMember", session, groupId, memberId) : (request)
+where
+	in Sessioning: _getUser (session) gets requester
+	in User: _getUserById (id: memberId) gets memberToAdd
+	in Grouping: _getGroup (id: groupId) gets group with owner: groupOwner
+	// Permission check: Only the group owner can add members.
+	requester is groupOwner
+	// Blocking check: Neither the requester nor the memberToAdd should have blocked the other.
+	in Blocking: not _isBlocked (userA: memberToAdd, userB: requester)
+	in Blocking: not _isBlocked (userA: requester, userB: memberToAdd)
+then
+	Grouping.addMember (group: group, member: memberToAdd)
+
+sync AddMemberResponse
+when
+	Requesting.request (path: "/groups/addMember") : (request)
+	Grouping.addMember () : (member) // Assuming it returns the added member or a success status
+then
+	Requesting.respond (request, member)
+
+sync AddMemberResponseError
+when
+	Requesting.request (path: "/groups/addMember") : (request)
+	Grouping.addMember () : (error)
+then
+	Requesting.respond (request, error)
+```
+
+***
+
+### `src/syncs/grouping/remove_member.sync.ts`
+
+```sync
+sync RemoveMemberRequest
+when
+	Requesting.request (path: "/groups/removeMember", session, groupId, memberId) : (request)
+where
+	in Sessioning: _getUser (session) gets requester
+	in User: _getUserById (id: memberId) gets memberToRemove
+	in Grouping: _getGroup (id: groupId) gets group with owner: groupOwner
+	// Permission check: Requester is either the group owner OR the member themselves.
+	(requester is groupOwner) or (requester is memberToRemove)
+then
+	Grouping.removeMember (group: group, member: memberToRemove)
+
+sync RemoveMemberResponse
+when
+	Requesting.request (path: "/groups/removeMember") : (request)
+	Grouping.removeMember () : (member) // Assuming it returns the removed member or success
+then
+	Requesting.respond (request, member)
+
+sync RemoveMemberResponseError
+when
+	Requesting.request (path: "/groups/removeMember") : (request)
+	Grouping.removeMember () : (error)
+then
+	Requesting.respond (request, error)
+```
+
+***
+
+### `src/syncs/grouping/delete_group.sync.ts`
+
+```sync
+sync DeleteGroupRequest
+when
+	Requesting.request (path: "/groups/delete", session, groupId) : (request)
+where
+	in Sessioning: _getUser (session) gets requester
+	in Grouping: _getGroup (id: groupId) gets group with owner: groupOwner
+	// Permission check: Only the group owner can delete the group.
+	requester is groupOwner
+then
+	Grouping.deleteGroup (group: group)
+
+sync DeleteGroupResponse
+when
+	Requesting.request (path: "/groups/delete") : (request)
+	Grouping.deleteGroup () : (success) // Or the deleted group object
+then
+	Requesting.respond (request, success)
+
+sync DeleteGroupResponseError
+when
+	Requesting.request (path: "/groups/delete") : (request)
+	Grouping.deleteGroup () : (error)
+then
+	Requesting.respond (request, error)
+```
+
+***
+
+### `src/syncs/grouping/get_group_members.sync.ts`
+
+```sync
+// Scenario 1: Group has members, respond with them
+sync GetGroupMembersRequestWithMembers
+when
+	Requesting.request (path: "/groups/members", session, groupId) : (request)
+where
+	in Sessioning: _getUser (session) gets requester
+	in Grouping: _getGroup (id: groupId) gets group
+	// Permission check: Requester must be a member of the group to view its members.
+	in Grouping: _isMember (group: group, member: requester)
+	in Grouping: _getMembersCount (group: group) gets count
+	count > 0 // Ensure there is at least one member
+	// Query for members and their usernames, each producing a frame
+	in Grouping: _getMembers (group: group) gets member
+	in User: _getUsername (user: member) gets memberName
+	// Collect all members and their names into a single `results` array, grouped by request
+	results is frames.collectAs([member, memberName], results)
+then
+	Requesting.respond (request, results)
+
+// Scenario 2: Group has no members, but request was valid, respond with empty array
+sync GetGroupMembersRequestNoMembers
+when
+	Requesting.request (path: "/groups/members", session, groupId) : (request)
+where
+	in Sessioning: _getUser (session) gets requester
+	in Grouping: _getGroup (id: groupId) gets group
+	in Grouping: _isMember (group: group, member: requester)
+	in Grouping: _getMembersCount (group: group) gets count
+	count is 0 // Ensure there are no members
+	results is [] // Explicitly bind an empty array to the results variable
+then
+	Requesting.respond (request, results)
+
+// Scenario 3: Request failed due to an error in a concept action (e.g., group not found, permission error if _isMember provided an error output)
+sync GetGroupMembersResponseError
+when
+	Requesting.request (path: "/groups/members") : (request)
+	// Example: an error from retrieving group details
+	Grouping._getGroup () : (error)
+then
+	Requesting.respond (request, error)
+```
+
+***
+
+### `src/syncs/grouping/get_my_groups.sync.ts`
+
+```sync
+// Scenario 1: User is a member of one or more groups
+sync GetMyGroupsRequestWithGroups
+when
+	Requesting.request (path: "/groups/my-groups", session) : (request)
+where
+	in Sessioning: _getUser (session) gets requester
+	in Grouping: _getGroupsCountForUser (user: requester) gets count
+	count > 0 // Ensure the user is a member of at least one group
+	// Query for groups the user is a member of
+	in Grouping: _getGroupsForUser (user: requester) gets group
+	// For each group, get its name and owner
+	in Grouping: _getGroupDetails (group: group) gets groupName, groupOwner
+	// For each group owner, get their username
+	in User: _getUsername (user: groupOwner) gets ownerName
+	// Collect all group details into a single `results` array
+	results is frames.collectAs([group, groupName, groupOwner, ownerName], results)
+then
+	Requesting.respond (request, results)
+
+// Scenario 2: User is not a member of any groups
+sync GetMyGroupsRequestNoGroups
+when
+	Requesting.request (path: "/groups/my-groups", session) : (request)
+where
+	in Sessioning: _getUser (session) gets requester
+	in Grouping: _getGroupsCountForUser (user: requester) gets count
+	count is 0 // Ensure the user is not a member of any group
+	results is [] // Explicitly bind an empty array to the results variable
+then
+	Requesting.respond (request, results)
+
+// Scenario 3: Request failed due to an error in a concept action
+sync GetMyGroupsResponseError
+when
+	Requesting.request (path: "/groups/my-groups") : (request)
+	// Example: an error from retrieving user's groups
+	Grouping._getGroupsForUser () : (error)
+then
+	Requesting.respond (request, error)
+```
