@@ -6,9 +6,9 @@
 *   **state**:
     *   a set of `Group`s with
         *   a `name` String
-        *   a `members` set of unique ID
+        *   a `members` set of User
         *   a `memberRoles` map from unique ID to Role (`ADMIN` | `MEMBER`)
-        *   a `requests` set of unique ID (e.g., `User` requesting to join)
+        *   a `requests` set of User (e.g., `User` requesting to join)
 
 *   **actions**:
 
