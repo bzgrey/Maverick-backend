@@ -1,7 +1,3 @@
-Here is a **clean, simple, copy-paste-ready** `FunctionalDesign.md` with no extra commentary.
-
----
-
 # Functional Design
 
 ## Problem Framing
