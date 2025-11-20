@@ -2,268 +2,193 @@ import { Collection, Db } from "npm:mongodb";
 import { Empty, ID } from "@utils/types.ts";
 import { freshID } from "@utils/database.ts";
 
-// --- Generic type parameters ---
+// Define generic types for the concept
 type User = ID;
 type Event = ID;
 type Schedule = ID;
 
-// --- Custom types from specification ---
+// Define the prefix for MongoDB collections
+const PREFIX = "Scheduling";
 
 /**
- * A structure for defining when an event occurs.
- * @property days - An array of weekdays, e.g., ["Tuesday", "Thursday"]
- * @property startTime - The start time in string format, e.g., "10:00"
- * @property endTime - The end time in string format, e.g., "11:30"
+ * State representation for the 'Users' set.
+ * Corresponds to: a set of Users with a Schedule
  */
-interface MeetingTime {
-  days: string[];
-  startTime: string;
-  endTime: string;
+interface UserDoc {
+  _id: User;
+  schedule: Schedule;
 }
 
-// --- State representation (MongoDB collection interfaces) ---
-
 /**
- * a set of Schedules with
- *   a user User
- *   a set of Events
+ * State representation for the 'Schedules' set.
+ * Corresponds to: a set of Schedules with a set of Events
  */
 interface ScheduleDoc {
   _id: Schedule;
-  user: User;
   events: Event[];
 }
 
 /**
- * a set of Events with
- *   a name String
- *   a type String
- *   a MeetingTime
- *   an optional user User
- */
-interface EventDoc {
-  _id: Event;
-  name: string;
-  type: string;
-  time: MeetingTime;
-  user?: User; // Optional owner of the event
-}
-
-const PREFIX = "Scheduling" + ".";
-
-/**
  * @concept Scheduling
- * @purpose Track events in one's schedule and compare with others.
- * @principle If a user adds different events to their schedule, they can then compare schedules and see which events they have in common.
+ * @purpose Track events in one's schedule and compare with others
  */
 export default class SchedulingConcept {
+  public readonly users: Collection<UserDoc>;
   public readonly schedules: Collection<ScheduleDoc>;
-  public readonly events: Collection<EventDoc>;
 
   constructor(private readonly db: Db) {
-    this.schedules = this.db.collection(PREFIX + "schedules");
-    this.events = this.db.collection(PREFIX + "events");
+    this.users = this.db.collection<UserDoc>(`${PREFIX}.users`);
+    this.schedules = this.db.collection<ScheduleDoc>(`${PREFIX}.schedules`);
   }
 
-  // ==================================================================================================
-  // ACTIONS
-  // ==================================================================================================
+  // --- ACTIONS ---
 
   /**
-   * createSchedule (user: User): (schedule: Schedule) | (error: string)
+   * createSchedule (user: User): (schedule: Schedule)
    *
-   * **requires**: The given `user` does not already have a schedule.
-   * **effects**: Creates a new, empty `Schedule` `s`; associates `s` with the `user`; returns the new `Schedule`'s identifier as `schedule`.
+   * @requires The given `user` does not already have a schedule.
+   * @effects Creates a new, empty `Schedule` `s`; associates `s` with the `user`; returns the new `Schedule`'s identifier as `schedule`.
    */
   async createSchedule(
     { user }: { user: User },
   ): Promise<{ schedule: Schedule } | { error: string }> {
-    const existingSchedule = await this.schedules.findOne({ user });
-    if (existingSchedule) {
-      return { error: "User already has a schedule." };
+    const existingUser = await this.users.findOne({ _id: user });
+    if (existingUser) {
+      return { error: `User ${user} already has a schedule.` };
     }
 
-    const scheduleId = freshID() as Schedule;
-    const result = await this.schedules.insertOne({
-      _id: scheduleId,
-      user,
+    const newScheduleId = freshID() as Schedule;
+
+    await this.schedules.insertOne({
+      _id: newScheduleId,
       events: [],
     });
 
-    if (!result.acknowledged) {
-      return { error: "Failed to create schedule in database." };
-    }
-    return { schedule: scheduleId };
-  }
-
-  /**
-   * addEvent (event: Event, name: String, type: String, time: MeetingTime, user?: User): Empty | (error: string)
-   *
-   * **requires**: the `event` isn't already in the set of Events.
-   * **effects**: Adds the `event` to the set of Events with the given info.
-   */
-  async addEvent(
-    { event, name, type, time, user }: {
-      event: Event;
-      name: string;
-      type: string;
-      time: MeetingTime;
-      user?: User;
-    },
-  ): Promise<Empty | { error: string }> {
-    const existingEvent = await this.events.findOne({ _id: event });
-    if (existingEvent) {
-      return { error: "Event with this ID already exists." };
-    }
-
-    const newEvent: EventDoc = { _id: event, name, type, time };
-    if (user) {
-      newEvent.user = user;
-    }
-
-    const result = await this.events.insertOne(newEvent);
-    if (!result.acknowledged) {
-      return { error: "Failed to add event to database." };
-    }
-    return {};
-  }
-
-  /**
-   * removeEvent (event: Event, user?: User): Empty | (error: string)
-   *
-   * **requires**: The `event` is in the set of events; If a user is given, then the event must have this user.
-   * **effects**: Removes the `event` from the set of Events and cascades the deletion to all schedules containing it.
-   */
-  async removeEvent(
-    { event, user }: { event: Event; user?: User },
-  ): Promise<Empty | { error: string }> {
-    const eventDoc = await this.events.findOne({ _id: event });
-    if (!eventDoc) {
-      return { error: "Event not found." };
-    }
-
-    if (user && eventDoc.user !== user) {
-      return { error: "User is not authorized to remove this event." };
-    }
-
-    const deleteResult = await this.events.deleteOne({ _id: event });
-    if (deleteResult.deletedCount === 0) {
-      return { error: "Failed to remove event from database." };
-    }
-
-    // Cascade delete: remove the event from any schedule that references it
-    await this.schedules.updateMany({ events: event }, {
-      $pull: { events: event },
+    await this.users.insertOne({
+      _id: user,
+      schedule: newScheduleId,
     });
 
-    return {};
+    return { schedule: newScheduleId };
   }
 
   /**
-   * scheduleEvent (user: User, event: Event): Empty | (error: string)
+   * scheduleEvent (user: User, event: Event)
    *
-   * **requires**: The `user` has a schedule; the `event` is in the set of Events.
-   * **effects**: Adds the `event` to the `user`'s schedule.
+   * @requires The `user` has a schedule.
+   * @effects Adds the `event` to the `user`'s schedule.
    */
   async scheduleEvent(
     { user, event }: { user: User; event: Event },
   ): Promise<Empty | { error: string }> {
-    const schedule = await this.schedules.findOne({ user });
-    if (!schedule) {
-      return { error: "User does not have a schedule." };
+    const userDoc = await this.users.findOne({ _id: user });
+    if (!userDoc) {
+      return { error: `User ${user} does not have a schedule.` };
     }
 
-    const eventDoc = await this.events.findOne({ _id: event });
-    if (!eventDoc) {
-      return { error: "Event not found." };
-    }
+    const scheduleId = userDoc.schedule;
 
-    // Use $addToSet to prevent duplicates and make the operation idempotent.
-    await this.schedules.updateOne({ _id: schedule._id }, {
-      $addToSet: { events: event },
-    });
+    // Use $addToSet to add the event to the array only if it's not already present
+    await this.schedules.updateOne(
+      { _id: scheduleId },
+      { $addToSet: { events: event } },
+    );
 
     return {};
   }
 
   /**
-   * unscheduleEvent (user: User, event: Event): Empty | (error: string)
+   * unscheduleEvent (user: User, event: Event)
    *
-   * **requires**: The `user` has a schedule, and the `event` is in the `user`'s schedule.
-   * **effects**: Removes the `event` from the `user`'s schedule.
+   * @requires The `user` has a schedule, and the `event` is in the `user`'s schedule.
+   * @effects Removes the `event` from the `user`'s schedule.
    */
   async unscheduleEvent(
     { user, event }: { user: User; event: Event },
   ): Promise<Empty | { error: string }> {
-    const schedule = await this.schedules.findOne({ user });
-    if (!schedule) {
-      return { error: "User does not have a schedule." };
+    const userDoc = await this.users.findOne({ _id: user });
+    if (!userDoc) {
+      return { error: `User ${user} does not have a schedule.` };
     }
 
-    if (!schedule.events.includes(event)) {
-      return { error: "Event is not in the user's schedule." };
-    }
+    const scheduleId = userDoc.schedule;
 
-    await this.schedules.updateOne({ _id: schedule._id }, {
-      $pull: { events: event },
-    });
+    // Use $pull to remove all instances of the event from the array
+    await this.schedules.updateOne(
+      { _id: scheduleId },
+      { $pull: { events: event } },
+    );
 
     return {};
   }
 
-  // ==================================================================================================
-  // QUERIES
-  // ==================================================================================================
+  // --- QUERIES ---
 
   /**
-   * _getUserSchedule(user: User): (event: Event, name: String, type: String, times: MeetingTime)[]
+   * _getUserSchedule(user: User): events: Event[]
    *
-   * **requires**: The `user` has a schedule.
-   * **effects**: Returns a set of all events in the user's schedule with their names, types, and times.
+   * @requires The `user` has a schedule.
+   * @effects Returns a set of all events (id's) in the user's schedule.
    */
   async _getUserSchedule(
     { user }: { user: User },
-  ): Promise<
-    { event: Event; name: string; type: string; times: MeetingTime }[]
-  > {
-    const schedule = await this.schedules.findOne({ user });
-    if (!schedule || schedule.events.length === 0) {
-      return [];
+  ): Promise<Event[] | { error: string }[]> {
+    const userDoc = await this.users.findOne({ _id: user });
+    if (!userDoc) {
+      return [{ error: `User ${user} does not have a schedule.` }];
     }
 
-    const eventDocs = await this.events.find({ _id: { $in: schedule.events } })
-      .toArray();
+    const scheduleDoc = await this.schedules.findOne({ _id: userDoc.schedule });
+    if (!scheduleDoc) {
+      // This indicates data inconsistency, which is an exceptional state.
+      // Per instructions, we return an error object inside an array.
+      return [{
+        error: `Data inconsistency: Schedule for user ${user} not found.`,
+      }];
+    }
 
-    return eventDocs.map((doc) => ({
-      event: doc._id,
-      name: doc.name,
-      type: doc.type,
-      times: doc.time,
-    }));
+    return scheduleDoc.events;
   }
 
   /**
-   * _getScheduleComparison (user1: User, user2: User): (events: Event[])[]
+   * _getScheduleComparison (user1: User, user2: User): events: Event[]
    *
-   * **requires**: Both `user1` and `user2` have schedules.
-   * **effects**: Returns the common event IDs between the schedules of user1 and user2.
+   * @requires Both `user1` and `user2` have schedules.
+   * @effects Returns the common event id's between the schedules of user1 and user2.
    */
   async _getScheduleComparison(
     { user1, user2 }: { user1: User; user2: User },
-  ): Promise<{ events: Event[] }[]> {
+  ): Promise<Event[] | { error: string }[]> {
+    const [user1Doc, user2Doc] = await Promise.all([
+      this.users.findOne({ _id: user1 }),
+      this.users.findOne({ _id: user2 }),
+    ]);
+
+    if (!user1Doc) {
+      return [{ error: `User ${user1} does not have a schedule.` }];
+    }
+    if (!user2Doc) {
+      return [{ error: `User ${user2} does not have a schedule.` }];
+    }
+
     const [schedule1, schedule2] = await Promise.all([
-      this.schedules.findOne({ user: user1 }),
-      this.schedules.findOne({ user: user2 }),
+      this.schedules.findOne({ _id: user1Doc.schedule }),
+      this.schedules.findOne({ _id: user2Doc.schedule }),
     ]);
 
     if (!schedule1 || !schedule2) {
-      // If one or both users lack a schedule, their intersection of events is empty.
-      return [{ events: [] }];
+      return [{
+        error:
+          `Data inconsistency: Could not find schedules for one or both users.`,
+      }];
     }
 
-    const events1 = new Set(schedule1.events);
-    const commonEvents = schedule2.events.filter((event) => events1.has(event));
+    // Find the intersection of the two event arrays
+    const events1Set = new Set(schedule1.events);
+    const commonEvents = schedule2.events.filter((event) =>
+      events1Set.has(event)
+    );
 
-    return [{ events: commonEvents }];
+    return commonEvents;
   }
 }

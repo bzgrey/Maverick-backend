@@ -1,263 +1,181 @@
 import { assertEquals, assertExists, assertNotEquals } from "jsr:@std/assert";
 import { testDb } from "@utils/database.ts";
-import { ID } from "@utils/types.ts";
 import SchedulingConcept from "./SchedulingConcept.ts";
+import { ID } from "@utils/types.ts";
 
-// Define some reusable test data
-const userAlice = "user:Alice" as ID;
-const userBob = "user:Bob" as ID;
-const userCharlie = "user:Charlie" as ID; // User without a schedule
+// Define mock IDs for testing
+const userA = "user:Alice" as ID;
+const userB = "user:Bob" as ID;
+const event1 = "event:concert" as ID;
+const event2 = "event:meeting" as ID;
+const event3 = "event:dinner" as ID;
 
-const eventMath = "event:Math101" as ID;
-const eventHistory = "event:Hist202" as ID;
-const eventArt = "event:Art303" as ID;
-const eventNonExistent = "event:DoesNotExist" as ID;
-
-const mathTime = {
-  days: ["Monday", "Wednesday", "Friday"],
-  startTime: "10:00",
-  endTime: "11:00",
-};
-const historyTime = {
-  days: ["Tuesday", "Thursday"],
-  startTime: "14:00",
-  endTime: "15:30",
-};
-const artTime = { days: ["Monday"], startTime: "13:00", endTime: "16:00" };
-
-Deno.test("SchedulingConcept", async (t) => {
-  const [db, client] = await testDb();
-  const scheduling = new SchedulingConcept(db);
-
+Deno.test("SchedulingConcept: Actions and Principle", async (t) => {
+  // Test `createSchedule` action
   await t.step("Action: createSchedule", async (t) => {
-    await t.step(
-      "should create a new schedule for a user who does not have one",
-      async () => {
-        console.log("  - Testing successful schedule creation for Alice");
-        const result = await scheduling.createSchedule({ user: userAlice });
-        assertNotEquals(result, { error: "User already has a schedule." });
-        assertExists((result as { schedule: ID }).schedule);
-      },
-    );
+    const [db, client] = await testDb();
+    const scheduling = new SchedulingConcept(db);
 
-    await t.step(
-      "should fail to create a schedule if one already exists for the user",
-      async () => {
-        console.log(
-          "  - Testing failed schedule creation for Alice (duplicate)",
-        );
-        const result = await scheduling.createSchedule({ user: userAlice });
-        assertEquals(result, { error: "User already has a schedule." });
-      },
-    );
-  });
+    await t.step("should create a new schedule for a user", async () => {
+      console.log("  - Testing successful schedule creation for userA");
+      const result = await scheduling.createSchedule({ user: userA });
+      assertNotEquals(
+        (result as { error: string }).error,
+        undefined,
+        "Expected a schedule ID, not an error.",
+      );
+      const { schedule } = result as { schedule: ID };
+      assertExists(schedule);
 
-  await t.step("Action: addEvent", async (t) => {
-    await t.step("should add a new event to the collection", async () => {
-      console.log("  - Testing successful creation of Math event");
-      const result = await scheduling.addEvent({
-        event: eventMath,
-        name: "Math 101",
-        type: "Lecture",
-        time: mathTime,
-      });
-      assertEquals(result, {});
-      const fromDb = await db.collection("Scheduling.events").findOne({
-        _id: eventMath,
-      });
-      assertEquals(fromDb?.name, "Math 101");
+      // Verify effects: check state in database
+      const userDoc = await scheduling.users.findOne({ _id: userA });
+      assertEquals(userDoc?.schedule, schedule);
+
+      const scheduleDoc = await scheduling.schedules.findOne({ _id: schedule });
+      assertEquals(scheduleDoc?.events, []);
+      console.log(
+        "  - Verified: user and schedule documents created correctly.",
+      );
     });
 
     await t.step(
-      "should fail to add an event if the ID already exists",
+      "should fail if the user already has a schedule (requires)",
       async () => {
-        console.log("  - Testing failed creation of Math event (duplicate ID)");
-        const result = await scheduling.addEvent({
-          event: eventMath,
-          name: "Duplicate Math",
-          type: "Lecture",
-          time: mathTime,
-        });
-        assertEquals(result, { error: "Event with this ID already exists." });
+        console.log("  - Testing failure case: userA already has a schedule");
+        // First, create a schedule
+        await scheduling.createSchedule({ user: userA });
+        // Then, try to create another one
+        const result = await scheduling.createSchedule({ user: userA });
+        const { error } = result as { error: string };
+        assertExists(error);
+        assertEquals(error, `User ${userA} already has a schedule.`);
+        console.log("  - Verified: action returned the expected error.");
       },
     );
+
+    await client.close();
   });
 
-  await t.step("Action: scheduleEvent", async (t) => {
-    // Setup Bob's schedule for this test
-    await scheduling.createSchedule({ user: userBob });
+  // Test `scheduleEvent` and `unscheduleEvent` actions
+  await t.step("Actions: scheduleEvent and unscheduleEvent", async (t) => {
+    const [db, client] = await testDb();
+    const scheduling = new SchedulingConcept(db);
+
+    // Setup: create a schedule for userA
+    const { schedule } = (await scheduling.createSchedule({ user: userA })) as {
+      schedule: ID;
+    };
 
     await t.step(
-      "should add an existing event to a user's schedule",
+      "scheduleEvent should add an event to a user's schedule",
       async () => {
-        console.log("  - Testing scheduling Math for Bob");
+        console.log("  - Testing scheduling a new event for userA");
         const result = await scheduling.scheduleEvent({
-          user: userBob,
-          event: eventMath,
+          user: userA,
+          event: event1,
         });
         assertEquals(result, {});
 
-        const schedule = await scheduling._getUserSchedule({ user: userBob });
-        assertEquals(schedule.length, 1);
-        assertEquals(schedule[0].event, eventMath);
-      },
-    );
-
-    await t.step(
-      "should fail if the user does not have a schedule",
-      async () => {
-        console.log("  - Testing scheduling for Charlie (no schedule)");
-        const result = await scheduling.scheduleEvent({
-          user: userCharlie,
-          event: eventMath,
+        // Verify effects
+        const scheduleDoc = await scheduling.schedules.findOne({
+          _id: schedule,
         });
-        assertEquals(result, { error: "User does not have a schedule." });
+        assertEquals(scheduleDoc?.events, [event1]);
+        console.log("  - Verified: event was added to the schedule.");
       },
     );
 
-    await t.step("should fail if the event does not exist", async () => {
-      console.log("  - Testing scheduling a non-existent event for Bob");
-      const result = await scheduling.scheduleEvent({
-        user: userBob,
-        event: eventNonExistent,
-      });
-      assertEquals(result, { error: "Event not found." });
-    });
-  });
-
-  await t.step("Action: unscheduleEvent", async (t) => {
-    await t.step("should remove an event from a user's schedule", async () => {
-      console.log("  - Testing unscheduling Math from Bob");
-      const result = await scheduling.unscheduleEvent({
-        user: userBob,
-        event: eventMath,
-      });
-      assertEquals(result, {});
-      const schedule = await scheduling._getUserSchedule({ user: userBob });
-      assertEquals(schedule.length, 0);
+    await t.step("scheduleEvent should not add a duplicate event", async () => {
+      console.log("  - Testing scheduling the same event again for userA");
+      await scheduling.scheduleEvent({ user: userA, event: event1 }); // First time
+      await scheduling.scheduleEvent({ user: userA, event: event1 }); // Second time
+      const scheduleDoc = await scheduling.schedules.findOne({ _id: schedule });
+      assertEquals(scheduleDoc?.events.length, 1);
+      console.log("  - Verified: schedule does not contain duplicate events.");
     });
 
     await t.step(
-      "should fail if the event is not in the user's schedule",
+      "unscheduleEvent should remove an event from a user's schedule",
       async () => {
-        console.log(
-          "  - Testing unscheduling Math from Bob again (should fail)",
-        );
+        console.log("  - Testing unscheduling an event for userA");
+        await scheduling.scheduleEvent({ user: userA, event: event1 }); // Ensure it's there
         const result = await scheduling.unscheduleEvent({
-          user: userBob,
-          event: eventMath,
-        });
-        assertEquals(result, { error: "Event is not in the user's schedule." });
-      },
-    );
-  });
-
-  await t.step("Action: removeEvent", async (t) => {
-    // Setup: Create a new event and add it to a schedule
-    await scheduling.addEvent({
-      event: eventArt,
-      name: "Art 303",
-      type: "Studio",
-      time: artTime,
-      user: userAlice,
-    });
-    await scheduling.scheduleEvent({ user: userAlice, event: eventArt });
-
-    let aliceSchedule = await scheduling._getUserSchedule({ user: userAlice });
-    assertEquals(
-      aliceSchedule.length,
-      1,
-      "Pre-condition failed: Art event not in Alice's schedule",
-    );
-
-    await t.step("should fail if user is not the owner", async () => {
-      console.log("  - Testing Bob removing Alice's owned event (should fail)");
-      const result = await scheduling.removeEvent({
-        event: eventArt,
-        user: userBob,
-      });
-      assertEquals(result, {
-        error: "User is not authorized to remove this event.",
-      });
-    });
-
-    await t.step(
-      "should remove an event from the collection and cascade delete from schedules",
-      async () => {
-        console.log(
-          "  - Testing Alice removing her own event (should succeed and cascade)",
-        );
-        const result = await scheduling.removeEvent({
-          event: eventArt,
-          user: userAlice,
+          user: userA,
+          event: event1,
         });
         assertEquals(result, {});
 
-        // Verify it's gone from the events collection
-        const fromDb = await db.collection("Scheduling.events").findOne({
-          _id: eventArt,
+        // Verify effects
+        const scheduleDoc = await scheduling.schedules.findOne({
+          _id: schedule,
         });
-        assertEquals(fromDb, null);
-
-        // Verify it was removed from Alice's schedule
-        aliceSchedule = await scheduling._getUserSchedule({ user: userAlice });
-        assertEquals(aliceSchedule.length, 0);
+        assertEquals(scheduleDoc?.events, []);
+        console.log("  - Verified: event was removed from the schedule.");
       },
     );
+
+    await t.step(
+      "scheduleEvent should fail if user has no schedule (requires)",
+      async () => {
+        console.log(
+          "  - Testing failure case: scheduling event for userB (no schedule)",
+        );
+        const result = await scheduling.scheduleEvent({
+          user: userB,
+          event: event1,
+        });
+        const { error } = result as { error: string };
+        assertExists(error);
+        assertEquals(error, `User ${userB} does not have a schedule.`);
+        console.log("  - Verified: action returned the expected error.");
+      },
+    );
+
+    await client.close();
   });
 
-  await t.step("Principle Test: Comparing schedules", async () => {
-    console.log("\n--- Testing the Core Principle ---");
-    // 1. Setup: Users Alice and Bob have schedules.
-    // Alice's schedule was created earlier. Bob's schedule was created earlier.
-    console.log("1. Alice and Bob have schedules.");
+  // Test the concept's principle
+  await t.step(
+    "Principle: Users can compare schedules to find common events",
+    async (t) => {
+      const [db, client] = await testDb();
+      const scheduling = new SchedulingConcept(db);
+      console.log("  - Setting up principle test scenario...");
 
-    // 2. Setup: Add common and unique events.
-    await scheduling.addEvent({
-      event: eventHistory,
-      name: "History 202",
-      type: "Seminar",
-      time: historyTime,
-    });
-    await scheduling.scheduleEvent({ user: userAlice, event: eventMath }); // Math is common
-    await scheduling.scheduleEvent({ user: userBob, event: eventMath }); // Math is common
-    await scheduling.scheduleEvent({ user: userBob, event: eventHistory }); // History is unique to Bob
-    console.log(
-      "2. Added Math (common) and History (unique to Bob) events to schedules.",
-    );
+      // 1. Create schedules for two users
+      console.log("  - Action: createSchedule for userA and userB");
+      await scheduling.createSchedule({ user: userA });
+      await scheduling.createSchedule({ user: userB });
 
-    // 3. Verify schedules individually.
-    const aliceSchedule = await scheduling._getUserSchedule({
-      user: userAlice,
-    });
-    const bobSchedule = await scheduling._getUserSchedule({ user: userBob });
-    assertEquals(aliceSchedule.length, 1);
-    assertEquals(aliceSchedule[0].event, eventMath);
-    assertEquals(bobSchedule.length, 2);
-    assertEquals(
-      bobSchedule.map((e) => e.event).sort(),
-      [eventHistory, eventMath].sort(),
-    );
-    console.log(
-      "3. Verified Alice's schedule has [Math] and Bob's has [Math, History].",
-    );
+      // 2. Add different events to their schedules, with one in common
+      console.log("  - Action: schedule events for userA (concert, meeting)");
+      await scheduling.scheduleEvent({ user: userA, event: event1 }); // concert
+      await scheduling.scheduleEvent({ user: userA, event: event2 }); // meeting
 
-    // 4. Compare schedules to find common events.
-    const comparisonResult = await scheduling._getScheduleComparison({
-      user1: userAlice,
-      user2: userBob,
-    });
-    console.log("4. Comparing schedules for Alice and Bob...");
+      console.log("  - Action: schedule events for userB (meeting, dinner)");
+      await scheduling.scheduleEvent({ user: userB, event: event2 }); // meeting
+      await scheduling.scheduleEvent({ user: userB, event: event3 }); // dinner
 
-    // 5. Assert the result.
-    assertEquals(comparisonResult.length, 1);
-    assertExists(comparisonResult[0].events);
-    assertEquals(comparisonResult[0].events, [eventMath]);
-    console.log(
-      `5. Success! Common event found: ${comparisonResult[0].events[0]}`,
-    );
-    console.log("--- Principle Test Passed ---\n");
-  });
+      // 3. Verify their individual schedules using the query
+      const scheduleA = await scheduling._getUserSchedule({ user: userA });
+      assertEquals(scheduleA.sort(), [event1, event2].sort());
 
-  await client.close();
+      const scheduleB = await scheduling._getUserSchedule({ user: userB });
+      assertEquals(scheduleB.sort(), [event2, event3].sort());
+      console.log("  - Verified: individual schedules are correct.");
+
+      // 4. Compare schedules and check for the common event
+      console.log("  - Query: _getScheduleComparison for userA and userB");
+      const commonEvents = await scheduling._getScheduleComparison({
+        user1: userA,
+        user2: userB,
+      });
+      assertEquals(commonEvents, [event2]);
+      console.log(
+        "  - Verified: comparison correctly identified the common event (meeting). Principle holds.",
+      );
+
+      await client.close();
+    },
+  );
 });

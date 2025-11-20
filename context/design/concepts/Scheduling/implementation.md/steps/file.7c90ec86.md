@@ -1,9 +1,8 @@
-[@concept-background](../../tools/concept-background.md)
-
-[@Scheduling](Scheduling.md)
-# implement: Scheduling
-implement the scheduling concept
-# response:
+---
+timestamp: 'Thu Nov 20 2025 18:23:59 GMT-0500 (Eastern Standard Time)'
+parent: '[[../20251120_182359.fc851562.md]]'
+content_id: 7c90ec86fea31043b64e2b980285a116374ea6fa125ad0da2b054ce8a6bef32b
+---
 
 # file: src/concepts/Scheduling/SchedulingConcept.ts
 
@@ -134,7 +133,7 @@ export default class SchedulingConcept {
    * @requires The `user` has a schedule.
    * @effects Returns a set of all events (id's) in the user's schedule.
    */
-  async _getUserSchedule({ user }: { user: User }): Promise<Event[] | { error: string }[]> {
+  async _getUserSchedule({ user }: { user: User }): Promise<{ events: Event[] }[] | { error: string }[]> {
     const userDoc = await this.users.findOne({ _id: user });
     if (!userDoc) {
       return [{ error: `User ${user} does not have a schedule.` }];
@@ -147,7 +146,7 @@ export default class SchedulingConcept {
       return [{ error: `Data inconsistency: Schedule for user ${user} not found.` }];
     }
 
-    return scheduleDoc.events;
+    return [{ events: scheduleDoc.events }];
   }
 
   /**
@@ -156,7 +155,7 @@ export default class SchedulingConcept {
    * @requires Both `user1` and `user2` have schedules.
    * @effects Returns the common event id's between the schedules of user1 and user2.
    */
-  async _getScheduleComparison({ user1, user2 }: { user1: User; user2: User }): Promise<Event[] | { error: string }[]> {
+  async _getScheduleComparison({ user1, user2 }: { user1: User; user2: User }): Promise<{ events: Event[] }[] | { error: string }[]> {
     const [user1Doc, user2Doc] = await Promise.all([
       this.users.findOne({ _id: user1 }),
       this.users.findOne({ _id: user2 }),
@@ -182,7 +181,7 @@ export default class SchedulingConcept {
     const events1Set = new Set(schedule1.events);
     const commonEvents = schedule2.events.filter((event) => events1Set.has(event));
 
-    return commonEvents;
+    return [{ events: commonEvents }];
   }
 }
 ```

@@ -1,9 +1,8 @@
-[@concept-background](../../tools/concept-background.md)
-
-[@Scheduling](Scheduling.md)
-# implement: Scheduling
-implement the scheduling concept
-# response:
+---
+timestamp: 'Thu Nov 20 2025 18:26:56 GMT-0500 (Eastern Standard Time)'
+parent: '[[../20251120_182656.fa31e279.md]]'
+content_id: f654a205ee332e378bc68c0f063ad932fc74d66505025dde2c15ba1ee89b3fae
+---
 
 # file: src/concepts/Scheduling/SchedulingConcept.ts
 

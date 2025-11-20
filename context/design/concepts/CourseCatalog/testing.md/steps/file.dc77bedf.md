@@ -1,9 +1,8 @@
-[@concept-background](../../tools/concept-background.md)
-
-[@CourseCatalog](CourseCatalog.md)
-# implement: CourseCatalog
-
-# response:
+---
+timestamp: 'Thu Nov 20 2025 18:41:04 GMT-0500 (Eastern Standard Time)'
+parent: '[[../20251120_184104.d150f148.md]]'
+content_id: dc77bedf75843465c614dec3f1e6a01ce9f617eb55230341b3f6cae17f153fb4
+---
 
 # file: src/concepts/CourseCatalog/CourseCatalogConcept.ts
 

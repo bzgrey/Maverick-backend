@@ -1,164 +1,194 @@
 import { Collection, Db } from "npm:mongodb";
-import { ID } from "@utils/types.ts";
+import { Empty, ID } from "@utils/types.ts";
 import { freshID } from "@utils/database.ts";
 
-// Define a prefix for collection names to avoid collisions and keep the database organized.
-const PREFIX = "CourseCatalog.";
+const PREFIX = "CourseCatalog" + ".";
 
-// Define type aliases for the IDs used in this concept for clarity.
-type Course = ID;
+// Generic parameter from concept spec
 type Event = ID;
 
+// Locally defined types
+type Course = ID;
+type Time = string; // Represented as "HH:mm"
+
 /**
- * Represents the meeting time for a course event.
- * It includes a set of days (e.g., ["Tuesday", "Thursday"]), a start time, and an end time.
- * Times are stored as strings in "HH:MM" format.
+ * Type for meeting time information
  */
-export interface MeetingTime {
-  days: string[];
-  startTime: string;
-  endTime: string;
+interface MeetingTime {
+  days: string[]; // e.g., ["Tuesday", "Thursday"]
+  startTime: Time;
+  endTime: Time;
 }
 
 /**
- * Database document structure for a Course.
- * a set of Courses with
- *   a name String
- *   a set of Events
+ * State for a set of Courses with
+ * - a name String
+ * - a set of Events
  */
 interface CourseDoc {
   _id: Course;
   name: string;
-  events: Event[]; // An array of Event IDs associated with this course.
+  events: Event[];
 }
 
 /**
- * Database document structure for an Event.
- * a set of Events with
- *   a type String (one of Lecture/Recitation/Lab)
- *   a MeetingTime
+ * State for a set of Events with
+ * - a Course (the course that this is part of)
+ * - a type String (one of Lecture/Recitation/Lab)
+ * - a MeetingTime
  */
 interface EventDoc {
   _id: Event;
+  course: Course;
   type: string;
   times: MeetingTime;
 }
 
 /**
- * Input type for creating events within the defineCourse action.
- * This is used because events are created as part of the course definition.
- */
-interface EventInput {
-  type: string;
-  times: MeetingTime;
-}
-
-/**
- * @concept CourseCatalog[Event]
- * @purpose Track the courses offered in a school with all of the information for each course regarding times, class types, name.
- * @principle One can define courses with their given information and then access the information to each course.
+ * @concept CourseCatalog
+ * @purpose Track the courses offered in a school with all of the information for each course regarding times, class types, name
  */
 export default class CourseCatalogConcept {
-  private readonly courses: Collection<CourseDoc>;
-  private readonly events: Collection<EventDoc>;
+  public readonly courses: Collection<CourseDoc>;
+  public readonly events: Collection<EventDoc>;
 
   constructor(private readonly db: Db) {
-    this.courses = this.db.collection<CourseDoc>(PREFIX + "courses");
-    this.events = this.db.collection<EventDoc>(PREFIX + "events");
+    this.courses = this.db.collection(PREFIX + "courses");
+    this.events = this.db.collection(PREFIX + "events");
   }
 
   /**
-   * defineCourse (name: String, events: (Event, type: String, times: MeetingTime)[]): (course: Course)
+   * Helper to convert "HH:mm" time string to minutes from midnight for comparison.
+   */
+  private timeToMinutes(time: Time): number {
+    const [hours, minutes] = time.split(":").map(Number);
+    return hours * 60 + minutes;
+  }
+
+  /**
+   * defineCourse (name: String, events: (type: String, times: MeetingTime)[]): (course: Course)
    *
    * **requires**: For each meeting time provided, `startTime < endTime`. Course with given name doesn't exist.
    * **effects**: Creates a new course in the set of Courses with defined lecture and optional recitation and lab times. This is typically an administrative action.
    */
   async defineCourse(
-    { name, events }: { name: string; events: EventInput[] },
+    { name, events }: {
+      name: string;
+      events: { type: string; times: MeetingTime }[];
+    },
   ): Promise<{ course: Course } | { error: string }> {
-    // **requires**: For each meeting time provided, startTime < endTime.
+    // Requires: Course with given name doesn't exist
+    const existingCourse = await this.courses.findOne({ name });
+    if (existingCourse) {
+      return { error: `Course with name '${name}' already exists` };
+    }
+
+    // Requires: For each meeting time provided, startTime < endTime
     for (const event of events) {
-      if (event.times.startTime >= event.times.endTime) {
+      if (
+        this.timeToMinutes(event.times.startTime) >=
+          this.timeToMinutes(event.times.endTime)
+      ) {
         return {
           error:
-            `Invalid meeting time: startTime ${event.times.startTime} must be before endTime ${event.times.endTime}.`,
+            `Invalid meeting time: startTime must be before endTime for event of type ${event.type}`,
         };
       }
     }
 
-    // **requires**: Course with given name doesn't exist.
-    const existingCourse = await this.courses.findOne({ name });
-    if (existingCourse) {
-      return { error: `Course with name '${name}' already exists.` };
+    // Effects: Creates a new course and its associated events
+    const newCourseId = freshID() as Course;
+    const newEventDocs: EventDoc[] = [];
+    const newEventIds: Event[] = [];
+
+    for (const event of events) {
+      const newEventId = freshID() as Event;
+      newEventIds.push(newEventId);
+      newEventDocs.push({
+        _id: newEventId,
+        course: newCourseId,
+        type: event.type,
+        times: event.times,
+      });
     }
 
-    // **effects**: Create new Event documents for the course.
-    const newEventDocs: EventDoc[] = events.map((event) => ({
-      _id: freshID(),
-      type: event.type,
-      times: event.times,
-    }));
+    const newCourseDoc: CourseDoc = {
+      _id: newCourseId,
+      name,
+      events: newEventIds,
+    };
 
+    await this.courses.insertOne(newCourseDoc);
     if (newEventDocs.length > 0) {
       await this.events.insertMany(newEventDocs);
     }
 
-    const eventIds = newEventDocs.map((doc) => doc._id);
+    return { course: newCourseId };
+  }
 
-    // **effects**: Create a new Course document.
-    const newCourseDoc: CourseDoc = {
-      _id: freshID(),
-      name,
-      events: eventIds,
-    };
-    await this.courses.insertOne(newCourseDoc);
+  /**
+   * removeCourse (course: Course)
+   *
+   * **requires**: course exists
+   * **effects**: removes course from set of courses and each of its events from the set of events
+   */
+  async removeCourse(
+    { course }: { course: Course },
+  ): Promise<Empty | { error: string }> {
+    // Requires: course exists
+    const courseDoc = await this.courses.findOne({ _id: course });
+    if (!courseDoc) {
+      return { error: `Course with id '${course}' not found` };
+    }
 
-    return { course: newCourseDoc._id };
+    // Effects: removes course and its events
+    if (courseDoc.events.length > 0) {
+      await this.events.deleteMany({ _id: { $in: courseDoc.events } });
+    }
+    await this.courses.deleteOne({ _id: course });
+
+    return {};
   }
 
   /**
    * _getAllCourses (): (courses: (course, name: String, events: (Event, type: String, times: MeetingTime))[])
+   *
    * **effects**: Returns all `Courses` in the catalog with their information.
    */
-  async _getAllCourses(): Promise<
-    {
-      course: Course;
-      name: string;
-      events: { event: Event; type: string; times: MeetingTime }[];
-    }[]
-  > {
-    const allCoursesWithEvents = await this.courses
-      .aggregate([
-        {
-          $lookup: {
-            from: this.events.collectionName,
-            localField: "events",
-            foreignField: "_id",
-            as: "eventDetails",
-          },
+  async _getAllCourses(): Promise<{
+    course: Course;
+    name: string;
+    events: { event: Event; type: string; times: MeetingTime }[];
+  }[]> {
+    const pipeline = [
+      {
+        $lookup: {
+          from: this.events.collectionName,
+          localField: "events",
+          foreignField: "_id",
+          as: "eventDetails",
         },
-        {
-          $project: {
-            _id: 0,
-            course: "$_id",
-            name: "$name",
-            events: {
-              $map: {
-                input: "$eventDetails",
-                as: "event",
-                in: {
-                  event: "$$event._id",
-                  type: "$$event.type",
-                  times: "$$event.times",
-                },
+      },
+      {
+        $project: {
+          _id: 0,
+          course: "$_id",
+          name: "$name",
+          events: {
+            $map: {
+              input: "$eventDetails",
+              as: "e",
+              in: {
+                event: "$$e._id",
+                type: "$$e.type",
+                times: "$$e.times",
               },
             },
           },
         },
-      ])
-      .toArray();
-
-    return allCoursesWithEvents as {
+      },
+    ];
+    return await this.courses.aggregate(pipeline).toArray() as {
       course: Course;
       name: string;
       events: { event: Event; type: string; times: MeetingTime }[];
@@ -166,73 +196,83 @@ export default class CourseCatalogConcept {
   }
 
   /**
-   * _getCourseInfo (courses: Course[]): ((name: String, events: (Event, type: String, times: MeetingTime))[])
+   * _getCourseInfo (courses: Course[]): (name: String, events: (Event, type: String, times: MeetingTime))[]
    *
    * **requires**: courses exist
    * **effects**: returns the course info for each course
    */
-  async _getCourseInfo(
-    { courses }: { courses: Course[] },
-  ): Promise<
-    {
-      name: string;
-      events: { event: Event; type: string; times: MeetingTime }[];
-    }[]
-  > {
-    const courseInfos = await this.courses
-      .aggregate([
-        { $match: { _id: { $in: courses } } },
-        {
-          $lookup: {
-            from: this.events.collectionName,
-            localField: "events",
-            foreignField: "_id",
-            as: "eventDetails",
-          },
+  async _getCourseInfo({ courses }: { courses: Course[] }): Promise<{
+    name: string;
+    events: { event: Event; type: string; times: MeetingTime }[];
+  }[]> {
+    const pipeline = [
+      {
+        $match: {
+          _id: { $in: courses },
         },
-        {
-          $project: {
-            _id: 0,
-            name: "$name",
-            events: {
-              $map: {
-                input: "$eventDetails",
-                as: "event",
-                in: {
-                  event: "$$event._id",
-                  type: "$$event.type",
-                  times: "$$event.times",
-                },
+      },
+      {
+        $lookup: {
+          from: this.events.collectionName,
+          localField: "events",
+          foreignField: "_id",
+          as: "eventDetails",
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          name: "$name",
+          events: {
+            $map: {
+              input: "$eventDetails",
+              as: "e",
+              in: {
+                event: "$$e._id",
+                type: "$$e.type",
+                times: "$$e.times",
               },
             },
           },
         },
-      ])
-      .toArray();
-
-    return courseInfos as {
+      },
+    ];
+    return await this.courses.aggregate(pipeline).toArray() as {
       name: string;
       events: { event: Event; type: string; times: MeetingTime }[];
     }[];
   }
 
   /**
-   * _getEventTimes (events: Event[]): ((event, times: MeetingTime)[])
+   * _getEventInfo (event: Event): (event: Event, name: String, type: String, times: MeetingTime)[]
    *
-   * **requires**: each event exists
-   * **effects**: returns the MeetingTimes for each given event
+   * **requires**: event exists
+   * **effects**: returns the MeetingTimes for given event
    */
-  async _getEventTimes(
-    { events }: { events: Event[] },
-  ): Promise<{ event: Event; times: MeetingTime }[]> {
-    const eventTimes = await this.events
-      .find({ _id: { $in: events } }, { projection: { _id: 1, times: 1 } })
-      .map((doc) => ({
-        event: doc._id,
-        times: doc.times,
-      }))
-      .toArray();
+  async _getEventInfo({ event }: { event: Event }): Promise<{
+    event: Event;
+    name: string;
+    type: string;
+    times: MeetingTime;
+  }[]> {
+    const eventDoc = await this.events.findOne({ _id: event });
+    if (!eventDoc) {
+      return [];
+    }
 
-    return eventTimes;
+    const courseDoc = await this.courses.findOne({ _id: eventDoc.course });
+    if (!courseDoc) {
+      // This indicates data inconsistency, but we return an empty array as per robust query behavior.
+      return [];
+    }
+
+    return [
+      {
+        event: eventDoc._id,
+        name: courseDoc.name,
+        type: eventDoc.type,
+        times: eventDoc.times,
+      },
+    ];
   }
 }

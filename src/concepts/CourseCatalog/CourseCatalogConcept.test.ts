@@ -1,19 +1,17 @@
 import { assertEquals, assertExists, assertNotEquals } from "jsr:@std/assert";
 import { testDb } from "@utils/database.ts";
-import { ID } from "@utils/types.ts";
 import CourseCatalogConcept from "./CourseCatalogConcept.ts";
+import { ID } from "@utils/types.ts";
 
 Deno.test("CourseCatalogConcept", async (t) => {
-  const [db, client] = await testDb();
-  const catalog = new CourseCatalogConcept(db);
-
   await t.step("Action: defineCourse", async (t) => {
     await t.step(
-      "should successfully define a new course with valid data",
+      "should create a course when requirements are met",
       async () => {
-        console.log(
-          "Testing: Successful creation of a course 'Intro to Concepts'.",
-        );
+        console.log("  - Testing: defineCourse success case");
+        const [db, client] = await testDb();
+        const catalog = new CourseCatalogConcept(db);
+
         const courseName = "Intro to Concepts";
         const events = [
           {
@@ -26,40 +24,39 @@ Deno.test("CourseCatalogConcept", async (t) => {
           },
           {
             type: "Recitation",
-            times: { days: ["Friday"], startTime: "14:00", endTime: "15:00" },
+            times: { days: ["Friday"], startTime: "10:00", endTime: "11:00" },
           },
         ];
 
-        console.log("Action: defineCourse with name and events");
+        console.log(`    Action: defineCourse({ name: "${courseName}" })`);
         const result = await catalog.defineCourse({ name: courseName, events });
-        console.log("Result:", result);
+        console.log("    Result:", result);
 
-        // Check for success (no error key)
-        assertEquals(
-          "error" in result,
-          false,
-          "Action should not return an error.",
+        assertNotEquals(
+          (result as { error: string }).error,
+          undefined,
+          "Action should not return an error",
         );
-        const { course: courseId } = result as { course: ID };
-        assertExists(courseId);
+        const { course } = result as { course: ID };
+        assertExists(course);
 
-        console.log(
-          "Confirming effects: Retrieving the course info to verify its creation.",
-        );
-        const courseInfo = await catalog._getCourseInfo({
-          courses: [courseId],
-        });
-        console.log("Retrieved info:", courseInfo);
+        console.log("    Effect: Verifying course and events were created");
+        const courseInfo = await catalog._getCourseInfo({ courses: [course] });
+        console.log("    Query Result (_getCourseInfo):", courseInfo);
 
         assertEquals(courseInfo.length, 1);
         assertEquals(courseInfo[0].name, courseName);
         assertEquals(courseInfo[0].events.length, 2);
-        // Clean up events from IDs for easier comparison
-        const retrievedEvents = courseInfo[0].events.map((e) => ({
-          type: e.type,
-          times: e.times,
-        }));
-        assertEquals(retrievedEvents, events);
+        assertEquals(
+          courseInfo[0].events.some((e) => e.type === "Lecture"),
+          true,
+        );
+        assertEquals(
+          courseInfo[0].events.some((e) => e.type === "Recitation"),
+          true,
+        );
+
+        await client.close();
       },
     );
 
@@ -67,159 +64,216 @@ Deno.test("CourseCatalogConcept", async (t) => {
       "should fail if a course with the same name already exists",
       async () => {
         console.log(
-          "Testing requires: Attempting to create a course with a duplicate name.",
+          "  - Testing: defineCourse requirement failure (duplicate name)",
         );
-        const courseName = "Duplicate Course";
+        const [db, client] = await testDb();
+        const catalog = new CourseCatalogConcept(db);
+
+        const courseName = "Intro to Concepts";
         const events = [{
           type: "Lecture",
-          times: { days: ["Tuesday"], startTime: "09:00", endTime: "10:00" },
+          times: { days: ["Monday"], startTime: "09:00", endTime: "10:00" },
         }];
 
-        console.log("Action: defineCourse (first attempt, should succeed)");
-        const firstResult = await catalog.defineCourse({
-          name: courseName,
-          events,
-        });
-        console.log("Result:", firstResult);
-        assertEquals("error" in firstResult, false);
-
-        console.log("Action: defineCourse (second attempt, should fail)");
-        const secondResult = await catalog.defineCourse({
-          name: courseName,
-          events,
-        });
-        console.log("Result:", secondResult);
-        assertExists(secondResult.error);
-        assertEquals(
-          secondResult.error,
-          `Course with name '${courseName}' already exists.`,
+        console.log(
+          `    Action: defineCourse({ name: "${courseName}" }) - First call (should succeed)`,
         );
+        await catalog.defineCourse({ name: courseName, events });
+
+        console.log(
+          `    Action: defineCourse({ name: "${courseName}" }) - Second call (should fail)`,
+        );
+        const result = await catalog.defineCourse({ name: courseName, events });
+        console.log("    Result:", result);
+
+        assertExists((result as { error: string }).error);
+        assertEquals(
+          (result as { error: string }).error,
+          `Course with name '${courseName}' already exists`,
+        );
+
+        await client.close();
       },
     );
 
     await t.step(
-      "should fail if any event has an invalid meeting time",
+      "should fail if an event has an invalid meeting time",
       async () => {
         console.log(
-          "Testing requires: Attempting to create a course with endTime before startTime.",
+          "  - Testing: defineCourse requirement failure (invalid times)",
         );
-        const courseName = "Invalid Time Course";
+        const [db, client] = await testDb();
+        const catalog = new CourseCatalogConcept(db);
+
+        const courseName = "Invalid Course";
         const events = [{
-          type: "Lab",
-          times: { days: ["Thursday"], startTime: "16:00", endTime: "15:00" }, // Invalid
+          type: "Lecture",
+          times: { days: ["Tuesday"], startTime: "14:00", endTime: "13:00" },
         }];
 
-        console.log("Action: defineCourse with invalid time");
-        const result = await catalog.defineCourse({ name: courseName, events });
-        console.log("Result:", result);
-
-        assertExists(result.error);
-        assertEquals(
-          result.error,
-          "Invalid meeting time: startTime 16:00 must be before endTime 15:00.",
+        console.log(
+          `    Action: defineCourse({ name: "${courseName}", events: [...] }) with endTime < startTime`,
         );
+        const result = await catalog.defineCourse({ name: courseName, events });
+        console.log("    Result:", result);
+
+        assertExists((result as { error: string }).error);
+        assertEquals(
+          (result as { error: string }).error,
+          "Invalid meeting time: startTime must be before endTime for event of type Lecture",
+        );
+
+        await client.close();
       },
     );
   });
 
-  await t.step("Principle: Define and retrieve courses", async () => {
-    console.log(
-      "\nTesting Principle: One can define courses with their given information and then access the information to each course.",
-    );
-    console.log(
-      "This trace will define two courses and then retrieve all of them to verify the catalog works as expected.",
+  await t.step("Action: removeCourse", async (t) => {
+    await t.step(
+      "should remove a course and its associated events",
+      async () => {
+        console.log("  - Testing: removeCourse success case");
+        const [db, client] = await testDb();
+        const catalog = new CourseCatalogConcept(db);
+
+        const courseName = "Temporary Course";
+        const events = [{
+          type: "Lab",
+          times: { days: ["Thursday"], startTime: "15:00", endTime: "17:00" },
+        }];
+
+        const defineResult = await catalog.defineCourse({
+          name: courseName,
+          events,
+        });
+        const { course } = defineResult as { course: ID };
+        assertExists(course);
+        console.log(
+          `    Setup: Created course '${courseName}' with ID ${course}`,
+        );
+
+        const courseInfoBefore = await catalog._getCourseInfo({
+          courses: [course],
+        });
+        const eventId = courseInfoBefore[0].events[0].event;
+
+        console.log(`    Action: removeCourse({ course: "${course}" })`);
+        const removeResult = await catalog.removeCourse({ course });
+        console.log("    Result:", removeResult);
+        assertEquals((removeResult as { error: string }).error, undefined);
+
+        console.log("    Effect: Verifying course and events were removed");
+        const allCourses = await catalog._getAllCourses();
+        const eventInfo = await catalog._getEventInfo({ event: eventId });
+
+        console.log("    Query Result (_getAllCourses):", allCourses);
+        console.log(
+          `    Query Result (_getEventInfo for event ${eventId}):`,
+          eventInfo,
+        );
+
+        assertEquals(allCourses.some((c) => c.course === course), false);
+        assertEquals(eventInfo.length, 0);
+
+        await client.close();
+      },
     );
 
-    // Step 1: Define two courses
+    await t.step("should fail if the course does not exist", async () => {
+      console.log(
+        "  - Testing: removeCourse requirement failure (course not found)",
+      );
+      const [db, client] = await testDb();
+      const catalog = new CourseCatalogConcept(db);
+      const nonExistentCourseId = "course:12345" as ID;
+
+      console.log(
+        `    Action: removeCourse({ course: "${nonExistentCourseId}" })`,
+      );
+      const result = await catalog.removeCourse({
+        course: nonExistentCourseId,
+      });
+      console.log("    Result:", result);
+
+      assertExists((result as { error: string }).error);
+      assertEquals(
+        (result as { error: string }).error,
+        `Course with id '${nonExistentCourseId}' not found`,
+      );
+
+      await client.close();
+    });
+  });
+
+  await t.step("Principle: define and access course information", async () => {
     console.log(
-      "\nTrace Step 1: Defining 'History of Art' and 'Compiler Design'.",
+      "\n- Testing Principle: One can define courses with their given information and then access the information to each course",
     );
-    const artCourseResult = await catalog.defineCourse({
-      name: "History of Art",
+    const [db, client] = await testDb();
+    const catalog = new CourseCatalogConcept(db);
+
+    console.log("  Step 1: Define multiple courses in the catalog.");
+    const course1 = {
+      name: "Intro to Programming",
       events: [{
         type: "Lecture",
-        times: {
-          days: ["Tuesday", "Thursday"],
-          startTime: "13:00",
-          endTime: "14:30",
-        },
+        times: { days: ["M", "W", "F"], startTime: "10:00", endTime: "11:00" },
       }],
-    });
-    const compilerCourseResult = await catalog.defineCourse({
-      name: "Compiler Design",
+    };
+    const course2 = {
+      name: "Data Structures",
       events: [
         {
           type: "Lecture",
-          times: {
-            days: ["Monday", "Friday"],
-            startTime: "11:00",
-            endTime: "12:30",
-          },
+          times: { days: ["T", "Th"], startTime: "14:30", endTime: "16:00" },
         },
         {
           type: "Lab",
-          times: { days: ["Wednesday"], startTime: "15:00", endTime: "17:00" },
+          times: { days: ["W"], startTime: "13:00", endTime: "15:00" },
         },
       ],
-    });
+    };
 
-    const artCourseId = (artCourseResult as { course: ID }).course;
-    const compilerCourseId = (compilerCourseResult as { course: ID }).course;
+    console.log(`    Action: defineCourse({ name: "${course1.name}" })`);
+    const result1 = await catalog.defineCourse(course1);
+    const course1Id = (result1 as { course: ID }).course;
 
-    assertNotEquals(artCourseId, undefined);
-    assertNotEquals(compilerCourseId, undefined);
-    console.log("Defined 'History of Art' with ID:", artCourseId);
-    console.log("Defined 'Compiler Design' with ID:", compilerCourseId);
+    console.log(`    Action: defineCourse({ name: "${course2.name}" })`);
+    const result2 = await catalog.defineCourse(course2);
+    const course2Id = (result2 as { course: ID }).course;
 
-    // Step 2: Access the information for all courses
     console.log(
-      "\nTrace Step 2: Accessing information for all courses via _getAllCourses.",
+      "\n  Step 2: Access the information for all and individual courses.",
     );
+
+    console.log("    Query: _getAllCourses()");
     const allCourses = await catalog._getAllCourses();
-    console.log(`Query: _getAllCourses(), found ${allCourses.length} courses.`);
+    console.log("    Result:", allCourses);
 
-    // There might be courses from previous steps, so we check that our two new courses exist.
-    const artCourseInfo = allCourses.find((c) => c.name === "History of Art");
-    const compilerCourseInfo = allCourses.find((c) =>
-      c.name === "Compiler Design"
-    );
+    assertEquals(allCourses.length, 2);
+    assertEquals(allCourses.some((c) => c.name === course1.name), true);
+    assertEquals(allCourses.some((c) => c.name === course2.name), true);
 
-    assertExists(
-      artCourseInfo,
-      "History of Art course should be in the catalog.",
-    );
-    assertExists(
-      compilerCourseInfo,
-      "Compiler Design course should be in the catalog.",
-    );
-    assertEquals(artCourseInfo.events.length, 1);
-    assertEquals(compilerCourseInfo.events.length, 2);
-    console.log(
-      "Successfully verified that both courses were created and can be retrieved.",
-    );
+    console.log(`    Query: _getCourseInfo({ courses: ["${course2Id}"] })`);
+    const dsCourseInfo = await catalog._getCourseInfo({ courses: [course2Id] });
+    console.log("    Result:", dsCourseInfo);
 
-    // Step 3: Access information for specific events of a course
-    console.log("\nTrace Step 3: Accessing meeting times for specific events.");
-    const compilerEventIds = compilerCourseInfo.events.map((e) => e.event);
-    const eventTimes = await catalog._getEventTimes({
-      events: compilerEventIds,
-    });
-    console.log(
-      `Query: _getEventTimes() for ${compilerEventIds.length} events.`,
-    );
-    console.log("Result:", eventTimes);
+    assertEquals(dsCourseInfo.length, 1);
+    assertEquals(dsCourseInfo[0].name, course2.name);
+    assertEquals(dsCourseInfo[0].events.length, 2);
 
-    assertEquals(eventTimes.length, 2);
-    assertEquals(eventTimes.map((e) => e.times.startTime).sort(), [
-      "11:00",
-      "15:00",
-    ]);
-    console.log("Successfully verified event times can be retrieved.");
+    const labEvent = dsCourseInfo[0].events.find((e) => e.type === "Lab");
+    assertExists(labEvent);
+    const labEventId = labEvent.event;
 
-    console.log(
-      "\nPrinciple Confirmed: The ability to define multiple courses and later access their full information demonstrates that the concept fulfills its purpose.",
-    );
+    console.log(`    Query: _getEventInfo({ event: "${labEventId}" })`);
+    const labEventInfo = await catalog._getEventInfo({ event: labEventId });
+    console.log("    Result:", labEventInfo);
+    assertEquals(labEventInfo.length, 1);
+    assertEquals(labEventInfo[0].name, course2.name);
+    assertEquals(labEventInfo[0].type, "Lab");
+
+    console.log("\n- Principle successfully demonstrated.");
+    await client.close();
   });
-
-  await client.close();
 });
