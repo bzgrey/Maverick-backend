@@ -1,4 +1,4 @@
-# concept: CourseCatalog
+ # concept: CourseCatalog
 
 **concept:** CourseCatalog\[Event]
 **purpose**: Track the courses offered in a school with all of the information for each course regarding times, class types, name
