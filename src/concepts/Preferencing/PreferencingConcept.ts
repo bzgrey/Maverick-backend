@@ -1,48 +1,3 @@
-[@implementing-concepts](../../background/implementing-concepts.md)
-
-[@Preferencing](Preferencing.md)
-
-# implement: Preferencing
-# response:
-
-An implementation of the `Preferencing` concept.
-
-# concept: Preferencing
-
-*   **concept**: Preferencing \[User, Item]
-
-*   **purpose**: To allow a user to assign a personal numerical score to a single item at a time, and to query this score.
-
-*   **principle**: Each user can assign a score to at most one item at any given time. Assigning a score to an item (either new or existing) replaces any previously held item and score for that user.
-
-*   **state**:
-    *   A set of `Users` with
-        *   an `item` of type `Item`
-        *   a `score` of type `Number`
-
-*   **actions**:
-    *   `addScore (user: User, item: Item, score: Number)`
-        *   **requires**: The `user` must not currently have an `item` and `score` assigned. The `score` must be a valid number.
-        *   **effects**: Assigns the given `item` and `score` to the `user`.
-    *   `updateScore (user: User, item: Item, score: Number)`
-        *   **requires**: The `user` must already have the specified `item` assigned. The `score` must be a valid number.
-        *   **effects**: Updates the `score` for the `user`'s assigned `item` to the new value.
-    *   `removeScore (user: User, item: Item)`
-        *   **requires**: The `user` must have the specified `item` assigned to them.
-        *   **effects**: Clears the `item` and `score` from the `user`'s record, removing the preference.
-
-*   **queries**:
-    *   `_getScore (user: User, item: Item): (score: Number)`
-        *   **requires**: `user` exists and `item` is associated with `user`
-        *   **outputs**: return `score` associated with `item`
-
-    *   `_getAllItems(user: User): (items: Item[])`
-        *   **requires** `user` exists
-        *   **effects**: list of Item `items` associated with the `user` is returned
-
-# file: src/concepts/preferencing/PreferencingConcept.ts
-
-```typescript
 import { Collection, Db } from "npm:mongodb";
 import { Empty, ID } from "@utils/types.ts";
 
@@ -85,10 +40,15 @@ export default class PreferencingConcept {
    * @requires The `user` must not currently have an `item` and `score` assigned. The `score` must be a valid number.
    * @effects Assigns the given `item` and `score` to the `user`.
    */
-  async addScore({ user, item, score }: { user: User; item: Item; score: number }): Promise<Empty | { error: string }> {
+  async addScore(
+    { user, item, score }: { user: User; item: Item; score: number },
+  ): Promise<Empty | { error: string }> {
     const existing = await this.users.findOne({ _id: user });
     if (existing) {
-      return { error: "User already has a scored item. Use updateScore or removeScore first." };
+      return {
+        error:
+          "User already has a scored item. Use updateScore or removeScore first.",
+      };
     }
 
     await this.users.insertOne({ _id: user, item, score });
@@ -101,7 +61,9 @@ export default class PreferencingConcept {
    * @requires The `user` must already have the specified `item` assigned. The `score` must be a valid number.
    * @effects Updates the `score` for the `user`'s assigned `item` to the new value.
    */
-  async updateScore({ user, item, score }: { user: User; item: Item; score: number }): Promise<Empty | { error: string }> {
+  async updateScore(
+    { user, item, score }: { user: User; item: Item; score: number },
+  ): Promise<Empty | { error: string }> {
     const existing = await this.users.findOne({ _id: user });
 
     if (!existing) {
@@ -112,7 +74,9 @@ export default class PreferencingConcept {
       return { error: "User is not scored on the specified item." };
     }
 
-    const { matchedCount } = await this.users.updateOne({ _id: user }, { $set: { score } });
+    const { matchedCount } = await this.users.updateOne({ _id: user }, {
+      $set: { score },
+    });
 
     if (matchedCount === 0) {
       // This case should theoretically not be reached due to the checks above, but it's good practice.
@@ -128,7 +92,9 @@ export default class PreferencingConcept {
    * @requires The `user` must have the specified `item` assigned to them.
    * @effects Clears the `item` and `score` from the `user`'s record, removing the preference.
    */
-  async removeScore({ user, item }: { user: User; item: Item }): Promise<Empty | { error: string }> {
+  async removeScore(
+    { user, item }: { user: User; item: Item },
+  ): Promise<Empty | { error: string }> {
     const existing = await this.users.findOne({ _id: user });
 
     if (!existing) {
@@ -157,7 +123,9 @@ export default class PreferencingConcept {
    * @requires `user` exists and `item` is associated with `user`
    * @outputs returns `score` associated with `item`
    */
-  async _getScore({ user, item }: { user: User; item: Item }): Promise<{ score: number }[]> {
+  async _getScore(
+    { user, item }: { user: User; item: Item },
+  ): Promise<{ score: number }[]> {
     const record = await this.users.findOne({ _id: user, item: item });
     if (!record) {
       return [];
@@ -182,4 +150,3 @@ export default class PreferencingConcept {
     return [{ items: [record.item] }];
   }
 }
-```
