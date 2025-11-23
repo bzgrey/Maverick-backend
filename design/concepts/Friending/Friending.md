@@ -23,8 +23,11 @@
       **effects** Removes the pair `{remover, removed}` from the `friends` set.
 
 *   **queries**
-    `_getAllFriendRequests (user:User):User[]`
-      **effects** returns list of requestees for user
+    `_getAllIncomingFriendRequests (user:User): (requestee: User)[]`
+      **effects** returns list of requestees for user (requests where user is the requester)
+
+    `_getAllOutgoingFriendRequests (user:User): (requester: User)[]`
+      **effects** returns list of requesters for user (requests where user is the requestee)
 
     `_getAllFriends (user:User):User[]`
       **effects** returns list of friends for user

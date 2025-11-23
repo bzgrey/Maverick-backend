@@ -188,10 +188,10 @@ export default class FriendingConcept {
   }
 
   /**
-   * _getAllFriendRequests (user:User): (requestee: User)[]
+   * _getAllIncomingFriendRequests (user:User): (requestee: User)[]
    * **effects** returns list of requestees for user
    */
-  async _getAllFriendRequests({ user }: { user: User }): Promise<{ requestee: User }[]> {
+  async _getAllIncomingFriendRequests({ user }: { user: User }): Promise<{ requestee: User }[]> {
     const requests = await this.pendingRequests.find({ requester: user }).toArray();
     return requests.map((req) => ({ requestee: req.requestee }));
   }
