@@ -132,7 +132,7 @@ export default class SchedulingConcept {
    */
   async _getUserSchedule(
     { user }: { user: User },
-  ): Promise<Event[] | { error: string }[]> {
+  ): Promise<{ event: Event }[] | { error: string }[]> {
     const userDoc = await this.users.findOne({ _id: user });
     if (!userDoc) {
       return [{ error: `User ${user} does not have a schedule.` }];
@@ -146,8 +146,7 @@ export default class SchedulingConcept {
         error: `Data inconsistency: Schedule for user ${user} not found.`,
       }];
     }
-
-    return scheduleDoc.events;
+    return scheduleDoc.events.map((eventId) => ({ event: eventId }));
   }
 
   /**
