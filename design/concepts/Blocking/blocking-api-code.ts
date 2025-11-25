@@ -81,72 +81,66 @@ export async function apiCall(
  */
 
 /**
- * Allows a user to block a specific target.
- * API Spec: POST /api/Blocking/block
- * Implementation: blockUser method expects { blocker, userToBlock }
- * @param user - The user who is blocking (from API spec)
- * @param target - The target being blocked (from API spec)
+ * Allows the authenticated user to block a specific target by username.
+ * API Spec: POST /api/blocking/block
+ * Sync implementation: uses session + targetUsername to look up user IDs
+ * @param session - Session token of the authenticated user
+ * @param targetUsername - Username of the user to block
  * @returns Empty object on success, throws error on failure
  */
-export async function blockUser(user: string, target: string): Promise<Record<string, never>> {
+export async function blockUser(session: string, targetUsername: string): Promise<Record<string, never>> {
   return await apiCall(
-    '/api/Blocking/blockUser',
-    { blocker: user, userToBlock: target },
+    '/api/blocking/block',
+    { session, targetUsername },
     'blockUser'
   ) as Record<string, never>;
 }
 
 /**
- * Allows a user to unblock a previously blocked target.
- * API Spec: POST /api/Blocking/unblock
- * Implementation: unblockUser method expects { blocker, userToUnblock }
- * @param user - The user who is unblocking (from API spec)
- * @param target - The target being unblocked (from API spec)
+ * Allows the authenticated user to unblock a previously blocked target.
+ * API Spec: POST /api/blocking/unblock
+ * Sync implementation: uses session + targetUsername to look up user IDs
+ * @param session - Session token of the authenticated user
+ * @param targetUsername - Username of the user to unblock
  * @returns Empty object on success, throws error on failure
  */
-export async function unblockUser(user: string, target: string): Promise<Record<string, never>> {
+export async function unblockUser(session: string, targetUsername: string): Promise<Record<string, never>> {
   return await apiCall(
-    '/api/Blocking/unblockUser',
-    { blocker: user, userToUnblock: target },
+    '/api/blocking/unblock',
+    { session, targetUsername },
     'unblockUser'
   ) as Record<string, never>;
 }
 
 /**
- * Checks if a user has blocked a specific target.
- * API Spec: POST /api/Blocking/_isBlocked
- * Implementation: _isUserBlocked method expects { primaryUser, secondaryUser }
- * Note: The API spec returns { isBlocked: boolean }[] but implementation returns { result: boolean }[]
- * @param user - The user to check (from API spec)
- * @param target - The target to check (from API spec)
- * @returns Array with single object containing isBlocked boolean
+ * Checks if the authenticated user has blocked a specific target.
+ * API Spec: POST /api/Blocking/_isUserBlocked
+ * Sync implementation: uses session + targetUsername
+ * @param session - Session token of the authenticated user
+ * @param targetUsername - Username of the user to check against the block list
+ * @returns Object containing isBlocked boolean
  */
-export async function isUserBlocked(user: string, target: string): Promise<{ isBlocked: boolean }[]> {
+export async function isUserBlocked(session: string, targetUsername: string): Promise<{ isBlocked: boolean }> {
   const response = await apiCall(
     '/api/Blocking/_isUserBlocked',
-    { primaryUser: user, secondaryUser: target },
+    { session, targetUsername },
     'isUserBlocked'
   );
-  // Map implementation response { result: boolean }[] to API spec format { isBlocked: boolean }[]
-  const result = response as { result: boolean }[];
-  return result.map((item) => ({ isBlocked: item.result }));
+  return response as { isBlocked: boolean };
 }
 
 /**
- * Retrieves a list of all targets that a user has blocked.
- * API Spec: POST /api/Blocking/_getBlocked
- * Implementation: _blockedUsers method expects { user }
- * Note: The API spec returns { target: Target }[] but implementation returns { user: User }[]
- * @param user - The user whose blocked list to retrieve
- * @returns Array of objects containing target IDs
+ * Retrieves the list of usernames that the authenticated user has blocked.
+ * API Spec: POST /api/Blocking/_blockedUsers
+ * Sync implementation: uses session authentication
+ * @param session - Session token of the authenticated user
+ * @returns Array of user IDs representing blocked users
  */
-export async function getBlockedUsers(user: string): Promise<{ target: string }[]> {
+export async function getBlockedUsers(session: string): Promise<string[]> {
   const response = await apiCall(
     '/api/Blocking/_blockedUsers',
-    { user },
+    { session },
     'getBlockedUsers'
   );
-  // Map implementation response { user: User }[] to API spec format { target: Target }[]
-  const result = response as { user: string }[];
-  return result.map((item) => ({ target: item.user }));
+  return response as string[];
 }

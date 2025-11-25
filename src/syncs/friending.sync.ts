@@ -409,3 +409,69 @@ export const AreTheyFriendsResponseError: Sync = ({ request, session, targetUser
   },
   then: actions([Requesting.respond, { request, error: queryError }]),
 });
+
+// ============================================================================
+// Remove Friend (Action)
+// ============================================================================
+
+export const RemoveFriendRequest: Sync = ({ request, session, targetUsername, remover, removed }) => ({
+  when: actions([Requesting.request, { path: "/friending/remove", session, targetUsername }, { request }]),
+  where: async (frames: Frames) => {
+    // Check if session is valid (get remover user)
+    frames = await frames.query(Sessioning._getUser, { session }, { user: remover });
+    if (frames.length === 0) {
+      // Return empty frames so this sync doesn't proceed - QueryErrorResponse will handle it
+      return new Frames();
+    }
+
+    // Check if target username exists (get removed user)
+    frames = await frames.query(UserAuthentication._getUserByUsername, { username: targetUsername }, { user: removed });
+    if (frames.length === 0) {
+      // Return empty frames so this sync doesn't proceed - QueryErrorResponse will handle it
+      return new Frames();
+    }
+
+    return frames;
+  },
+  then: actions([Friending.removeFriend, { remover, removed }]),
+});
+
+export const RemoveFriendResponse: Sync = ({ request }) => ({
+  when: actions(
+    [Requesting.request, { path: "/friending/remove" }, { request }],
+    [Friending.removeFriend, {}, {}],
+  ),
+  then: actions([Requesting.respond, { request, status: "removed" }]),
+});
+
+export const RemoveFriendErrorResponse: Sync = ({ request, error }) => ({
+  when: actions(
+    [Requesting.request, { path: "/friending/remove" }, { request }],
+    [Friending.removeFriend, {}, { error }],
+  ),
+  then: actions([Requesting.respond, { request, error }]),
+});
+
+// Handle query errors from where clause (user not found, invalid session, etc.)
+export const RemoveFriendQueryErrorResponse: Sync = ({ request, session, targetUsername, remover, removed, queryError }) => ({
+  when: actions([Requesting.request, { path: "/friending/remove", session, targetUsername }, { request }]),
+  where: async (frames: Frames) => {
+    const originalFrame = frames[0];
+
+    // Check if session is valid
+    frames = await frames.query(Sessioning._getUser, { session }, { user: remover });
+    if (frames.length === 0) {
+      return new Frames({ ...originalFrame, [request]: originalFrame[request], [queryError]: "Invalid session" });
+    }
+
+    // Check if target username exists
+    frames = await frames.query(UserAuthentication._getUserByUsername, { username: targetUsername }, { user: removed });
+    if (frames.length === 0) {
+      return new Frames({ ...originalFrame, [request]: originalFrame[request], [queryError]: "User not found" });
+    }
+
+    // If we get here, the user exists, so this sync shouldn't fire
+    return new Frames();
+  },
+  then: actions([Requesting.respond, { request, error: queryError }]),
+});

@@ -62,8 +62,14 @@ export const exclusions: Array<string> = [
   "/api/Friending/requestFriend",
   "/api/Friending/acceptFriend",
   "/api/Friending/rejectFriend",
+  "/api/Friending/removeFriend",
   "/api/Friending/_getAllIncomingFriendRequests",
   "/api/Friending/_getAllOutgoingFriendRequests",
   "/api/Friending/_getAllFriends",
   "/api/Friending/_areTheyFriends",
+  // Blocking routes handled by syncs
+  "/api/Blocking/blockUser",
+  "/api/Blocking/unblockUser",
+  "/api/Blocking/_blockedUsers",
+  "/api/Blocking/_isUserBlocked",
 ];
