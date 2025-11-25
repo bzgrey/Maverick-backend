@@ -53,7 +53,7 @@ export default class SchedulingConcept {
     { user }: { user: User },
   ): Promise<{ schedule: Schedule } | { error: string }> {
     const existingUser = await this.users.findOne({ _id: user });
-    if (existingUser) {
+    if (existingUser && existingUser.schedule) {
       return { error: `User ${user} already has a schedule.` };
     }
 
@@ -132,22 +132,19 @@ export default class SchedulingConcept {
    */
   async _getUserSchedule(
     { user }: { user: User },
-  ): Promise<Event[] | { error: string }[]> {
+  ): Promise<{ event: Event }[]> {
     const userDoc = await this.users.findOne({ _id: user });
     if (!userDoc) {
-      return [{ error: `User ${user} does not have a schedule.` }];
+      return [];
     }
 
     const scheduleDoc = await this.schedules.findOne({ _id: userDoc.schedule });
     if (!scheduleDoc) {
       // This indicates data inconsistency, which is an exceptional state.
-      // Per instructions, we return an error object inside an array.
-      return [{
-        error: `Data inconsistency: Schedule for user ${user} not found.`,
-      }];
+      return [];
     }
 
-    return scheduleDoc.events;
+    return scheduleDoc.events.map((event) => ({ event }));
   }
 
   /**
@@ -158,17 +155,14 @@ export default class SchedulingConcept {
    */
   async _getScheduleComparison(
     { user1, user2 }: { user1: User; user2: User },
-  ): Promise<Event[] | { error: string }[]> {
+  ): Promise<{ event: Event }[]> {
     const [user1Doc, user2Doc] = await Promise.all([
       this.users.findOne({ _id: user1 }),
       this.users.findOne({ _id: user2 }),
     ]);
 
-    if (!user1Doc) {
-      return [{ error: `User ${user1} does not have a schedule.` }];
-    }
-    if (!user2Doc) {
-      return [{ error: `User ${user2} does not have a schedule.` }];
+    if (!user1Doc || !user2Doc) {
+      return [];
     }
 
     const [schedule1, schedule2] = await Promise.all([
@@ -177,10 +171,7 @@ export default class SchedulingConcept {
     ]);
 
     if (!schedule1 || !schedule2) {
-      return [{
-        error:
-          `Data inconsistency: Could not find schedules for one or both users.`,
-      }];
+      return [];
     }
 
     // Find the intersection of the two event arrays
@@ -189,6 +180,6 @@ export default class SchedulingConcept {
       events1Set.has(event)
     );
 
-    return commonEvents;
+    return commonEvents.map((event) => ({ event }));
   }
 }

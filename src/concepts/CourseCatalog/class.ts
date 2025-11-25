@@ -517,54 +517,50 @@ export class Class {
       times: { days: string[]; startTime: string; endTime: string };
     }[] = [];
 
+    const dayMap = [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ];
+
     for (const sections of this.sections) {
       for (const section of sections.sections) {
-        if (section.rawTime === "TBD") {
+        if (section.rawTime === "TBD" || section.timeslots.length === 0) {
           continue;
-        } else {
-          // Parse the rawTime format: "room/days/evening/time"
-          // Example: "6-120/MW/0/12.30-2" or "4-149/TR/0/10"
-          const [_, daysStr, __, timeStr] = section.rawTime.split("/");
-
-          // Convert day abbreviations to full names
-          const dayMap: Record<string, string> = {
-            M: "Monday",
-            T: "Tuesday",
-            W: "Wednesday",
-            R: "Thursday",
-            F: "Friday",
-          };
-          if (daysStr === undefined) {
-            console.log("Undefined daysStr for section:", section.rawTime);
-            console.log("name: ", name);
-          }
-          // console.log(daysStr);
-          const days = daysStr.split("").map((d) => dayMap[d]);
-
-          // Parse time string (e.g., "12.30-2" or "10")
-          let startTime: string;
-          let endTime: string;
-
-          if (timeStr.includes("-")) {
-            const [start, end] = timeStr.split("-");
-            startTime = this.parseTimeString(start);
-            endTime = this.parseTimeString(end);
-          } else {
-            // Single hour slot (e.g., "10" means 10:00-11:00)
-            const hour = parseInt(timeStr);
-            startTime = `${hour.toString().padStart(2, "0")}:00`;
-            endTime = `${(hour + 1).toString().padStart(2, "0")}:00`;
-          }
-
-          events.push({
-            type: sections.name, // "Lecture", "Recitation", "Lab", or "Design"
-            times: {
-              days,
-              startTime,
-              endTime,
-            },
-          });
         }
+
+        // Use the first timeslot to get start time and day information
+        const firstSlot = section.timeslots[0];
+        const startDate = firstSlot.startTime;
+        const endDate = firstSlot.endTime;
+
+        // Collect all unique days from timeslots
+        const days = Array.from(
+          new Set(
+            section.timeslots.map((slot) => dayMap[slot.startTime.getDay()]),
+          ),
+        );
+
+        // Format time as "HH:mm"
+        const startTime = `${
+          startDate.getHours().toString().padStart(2, "0")
+        }:${startDate.getMinutes().toString().padStart(2, "0")}`;
+        const endTime = `${endDate.getHours().toString().padStart(2, "0")}:${
+          endDate.getMinutes().toString().padStart(2, "0")
+        }`;
+
+        events.push({
+          type: sections.name, // "Lecture", "Recitation", "Lab", or "Design"
+          times: {
+            days,
+            startTime,
+            endTime,
+          },
+        });
       }
     }
 
@@ -750,5 +746,6 @@ for (const classobj of classObjects) {
   //   console.log(JSON.stringify(classobj.getAllSectionTimes(), null, 2));
   // }
   // console.log(JSON.stringify(classobj, null, 2));
+  // console.log(classobj.toDefineCourseFormat());
   await CourseCatalog.defineCourse(classobj.toDefineCourseFormat());
 }
