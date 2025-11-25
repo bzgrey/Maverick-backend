@@ -139,3 +139,47 @@ export const GetUsernameResponseError: Sync = ({ request, user, username }) => (
   },
   then: actions([Requesting.respond, { request, error: "User not found" }]),
 });
+
+//-- Get All Users (Query) --//
+export const GetAllUsersResponseSuccess: Sync = ({ request, session, user, users }) => ({
+  when: actions([Requesting.request, { path: "/UserAuthentication/_getAllUsers", session }, { request }]),
+  where: async (frames: Frames) => {
+    const originalFrame = frames[0];
+
+    // Authenticate: Get user from session
+    frames = await frames.query(Sessioning._getUser, { session }, { user });
+    if (frames.length === 0) {
+      return new Frames(); // Invalid session, return empty so this sync doesn't fire
+    }
+
+    // Query for all users
+    // _getAllUsers returns { user: User }[], so we can use frames.query() to bind
+    frames = await frames.query(UserAuthentication._getAllUsers, {}, { user });
+
+    // Handle empty results (no users in system)
+    if (frames.length === 0) {
+      return new Frames({ ...originalFrame, [request]: originalFrame[request], [users]: [] });
+    }
+
+    // Collect all user IDs into a single array
+    return frames.collectAs([user], users);
+  },
+  then: actions([Requesting.respond, { request, users }]),
+});
+
+export const GetAllUsersResponseError: Sync = ({ request, session, user }) => ({
+  when: actions([Requesting.request, { path: "/UserAuthentication/_getAllUsers", session }, { request }]),
+  where: async (frames: Frames) => {
+    const originalFrame = frames[0];
+
+    // Check if session is valid
+    frames = await frames.query(Sessioning._getUser, { session }, { user });
+    if (frames.length === 0) {
+      return new Frames({ ...originalFrame, [request]: originalFrame[request] });
+    }
+
+    // If we get here, session is valid, so this sync shouldn't fire
+    return new Frames();
+  },
+  then: actions([Requesting.respond, { request, error: "Invalid session" }]),
+});

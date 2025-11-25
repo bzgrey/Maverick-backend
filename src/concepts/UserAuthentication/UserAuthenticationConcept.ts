@@ -144,4 +144,14 @@ export default class UserAuthenticationConcept {
     }
     return [];
   }
+
+  /**
+   * _getAllUsers (): (user: User)[]
+   *
+   * **effects**: returns all User IDs in the system.
+   */
+  async _getAllUsers(): Promise<{ user: User }[]> {
+    const allUsers = await this.users.find({}).toArray();
+    return allUsers.map((userDoc) => ({ user: userDoc._id }));
+  }
 }
