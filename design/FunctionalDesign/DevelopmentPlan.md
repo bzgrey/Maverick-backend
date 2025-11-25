@@ -5,20 +5,32 @@
 
 | Feature / Task             | Checkpoint | Owner                                    |
 | -------------------------- | ---------- | ---------------------------------------- |
-| Scheduling Concept         | Alpha      | Benny                                    |
-| CourseCataloging           | Alpha      | Benny                                    |
-| Hydrant Parsing            | Alpha      | Betsegaw                                 |
-| Friending Concept          | Alpha      | Yabetse                                  |
-| User Login Page            | Alpha      | Benny                                    |
-| Schedule Component         | Alpha      | Betsegaw (w/ dummy data), Benny          |
-| Course Info Component      | Alpha      | Giani                                    |
-| User Profile Page          | Alpha      | Yabetse                                  |
-| Course Search Component    | Alpha      | Giani                                    |
+| Scheduling Concept         | Alpha  ✅  | Benny                                    |
+| CourseCataloging           | Alpha  ✅  | Benny                                    |
+| Hydrant Parsing            | Alpha  ✅  | Betsegaw                                 |
+| Friending Concept          | Alpha  ✅  | Yabetse                                  |
+| User Login Page            | Alpha  ✅  | Benny                                    |
+| Schedule Component         | Alpha  ✅  | Betsegaw (w/ dummy data), Benny          |
+| Course Info Component      | Alpha  ✅  | Giani                                    |
+| User Profile Page          | Alpha  ✅  | Yabetse                                  |
+| Course Search Component    | Alpha  ✅  | Giani                                    |
 | Grouping Concept           | Beta       | Giani                                    |
 | Preferences Concept        | Beta       | Betsegaw                                 |
 | Blocking Concept           | Beta       | Yabetse                                  |
 | User Schedule Diffs        | Beta       | Benny                                    |
 | Preferencing Frontend      | Beta       | Giani                                    |
+| Add Room Numbers           | Beta (New) | Giani                                    |
+| Outgoing Friend Requests   | Beta (New) | Yabetse                                  |
+| Schedule Component Design  | Beta (New) | Betsegaw                                 |
+| Course Filtering and Info  | Beta (New) | Betsegaw                                 |
+| Add getFriendsInEvent sync | Beta (New) | Benny                                    |
+| Add Lab Support            | Beta (New) | Giani                                    |
+| Scheduling   ->   Schedule | Beta (New) | Benny                                    |
+
+
+## Alpha Checkpoint Update
+
+We finished initial implementations of everything in the alpha development plan, as indicated by the checks. Our design changed in that we decided to split up the concept CourseScheduling into CourseCatalog and Scheduling
 
 ---
 
