@@ -29,7 +29,6 @@ export const GetEventFriends: Sync = (
     friends,
     username,
     results,
-    // friendEvent,
   },
 ) => ({
   when: actions([
@@ -39,7 +38,6 @@ export const GetEventFriends: Sync = (
     { request },
   ]),
   where: async (frames) => {
-    console.log(frames);
     // Preserve the request ID for the response if queries return empty
     const originalFrame = frames[0];
 
@@ -48,24 +46,20 @@ export const GetEventFriends: Sync = (
 
     // 2. Get friends of the authenticated user
     frames = await frames.query(Friending._getAllFriends, { user }, { friend });
-    console.log(frames);
 
     // 3. Get each friend's username
     frames = await frames.query(UserAuthentication._getUsername, {
       user: friend,
     }, { username });
 
-    console.log(frames);
     // 4. Get each friends schedule to see if they have the event
     frames = await frames.query(Scheduling._getUserSchedule, { user: friend }, {
       event,
     });
-    console.log(frames);
     // 5. Filter to only those friends events that match the requested events
     frames = frames.filter((frame) =>
       (frame[events] as unknown[]).includes(frame[event])
     );
-    console.log(frames);
 
     // Handle empty results (user has no schedule or events not found)
     if (frames.length === 0) {
