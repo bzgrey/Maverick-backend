@@ -50,7 +50,10 @@
     *   **requires** `group` exists
     *   **effects** returns the set of all users in the `members` set of the given `group`
 
-*   `isGroupMember (group: Group, user: User): (inGroup: bool)`
+*   `_getGroups (): (groups: set of Group)`
+    *   **effects** returns the set of `groups`
+
+*   `_isGroupMember (group: Group, user: User): (inGroup: bool)`
     *   **requires** `group` exists
     *   **effects** returns true if `user` in `group.members` else false
 
@@ -58,17 +61,20 @@
     *   **requires** `group` exists
     *   **effects** returns the set of all users in the `admins` set of the given `group`
 
-*   `isGroupAdmin (group: Group, user: User): (isAdmin: bool)`
+*   `_isGroupAdmin (group: Group, user: User): (isAdmin: bool)`
     *   **requires** `group` exists
     *   **effects** returns true if `user` in `group.members` and has `ADMIN` in `group.memberRoles`.
 
-*   `_getRequests (group: Group): (requestingUser: User)`
+*   `_getGroupRequests (group: Group): (requestingUser: User)`
     *   **requires** `group` exists
     *   **effects** returns the set of all users in the `requests` set of the given `group`
 
-*   `_getGroupByName (name: String): (group: Group)`
-    *   **requires** a group `g` with `g.name = name` exists
-    *   **effects** returns the group `g`
+*   `_getUserRequests (user: User): (group: Group)`
+    *   **effects** returns the set of all groups in which the `user` appears in the `requests` set
+
+*   `_getGroupName (group: Group): (name: String)`
+    *   **requires** a group `group` exits
+    *   **effects** returns `name` of group `group`
 
 *   `_getUserGroups (user: User): (group: set of Group)`
     *   **requires** `user` is a member within an existing group

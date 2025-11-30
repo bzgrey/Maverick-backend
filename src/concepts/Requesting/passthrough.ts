@@ -29,6 +29,8 @@ export const inclusions: Record<string, string> = {
   "/api/CourseCatalog/_getAllCourses": "this is public information",
   "/api/CourseCatalog/_getCourseInfo": "this is public information",
   "/api/CourseCatalog/_getEventInfo": "this is public information",
+  "/api/Grouping/_getGroupName": "this is public information",
+  "/api/Grouping/_getGroups": "this is public information",
 };
 
 /**
@@ -73,4 +75,20 @@ export const exclusions: Array<string> = [
   "/api/Blocking/unblockUser",
   "/api/Blocking/_blockedUsers",
   "/api/Blocking/_isUserBlocked",
+  // Grouping routes handled by syncs
+  "/api/Grouping/createGroup",
+  "/api/Grouping/deleteGroup",
+  "/api/Grouping/renameGroup",
+  "/api/Grouping/requestToJoin",
+  "/api/Grouping/adjustRole",
+  "/api/Grouping/removeMember",
+  "/api/Grouping/confirmRequest",
+  "/api/Grouping/declineRequest",
+  "/api/Grouping/_getMembers",
+  "/api/Grouping/_getUserGroups",
+  "/api/Grouping/_getAdmins",
+  "/api/Grouping/_isGroupAdmin",
+  "/api/Grouping/_isGroupMember",
+  "/api/Grouping/_getGroupRequests",
+  "/api/Grouping/_getUserRequests",
 ];

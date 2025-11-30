@@ -1,0 +1,371 @@
+---
+timestamp: 'Sun Nov 30 2025 11:46:30 GMT-0500 (Eastern Standard Time)'
+parent: '[[../20251130_114630.6b2fb6c4.md]]'
+content_id: 9b607f173feef59562e942bdc15857f222929bfe8936fd937fd5064d3389263a
+---
+
+# file: src/concepts/Grouping/GroupingConcept.ts
+
+```typescript
+import { Collection, Db } from "npm:mongodb";
+import { Empty, ID } from "@utils/types.ts";
+import { freshID } from "@utils/database.ts";
+
+// Collection prefix
+const PREFIX = "Grouping" + ".";
+
+// Generic types of this concept
+type User = ID;
+type Group = ID;
+
+// Roles
+type Role = "ADMIN" | "MEMBER";
+const ROLES: Role[] = ["ADMIN", "MEMBER"];
+
+/**
+ * Represents the state of a Group in the database.
+ * a set of `Group`s with
+ *   a `name` String
+ *   a `members` set of User
+ *   a `memberRoles` map from User to Role (`ADMIN` | `MEMBER`)
+ *   a `requests` set of User (e.g., `User` requesting to join)
+ */
+interface GroupState {
+  _id: Group;
+  name: string;
+  members: User[];
+  memberRoles: Record<User, Role>;
+  requests: User[];
+}
+
+/**
+ * @concept Grouping
+ * @purpose Manage the lifecycle of groups and their membership.
+ * @principle An admin creates a private Group, allowing future users to request to join, inviting and removing members, and managing member roles (such as owner or administrator). It provides the fundamental mechanics of association that can be used for a wide variety of features, such as team collaboration, social clubs, or access control lists.
+ */
+export default class GroupingConcept {
+  groups: Collection<GroupState>;
+
+  constructor(private readonly db: Db) {
+    this.groups = this.db.collection(PREFIX + "groups");
+  }
+
+  /**
+   * createGroup (name: String, admin: User): (group: Group)
+   * @requires no Group exists with the given `name`.
+   * @effects create new `group` with `name` name, `admin` as only member in `members`, `admin` having role `ADMIN` in `memberRoles`, and returns `group`.
+   */
+  async createGroup(
+    { name, admin }: { name: string; admin: User },
+  ): Promise<{ group: Group } | { error: string }> {
+    const existingGroup = await this.groups.findOne({ name });
+    if (existingGroup) {
+      return { error: `Group with name '${name}' already exists.` };
+    }
+
+    const newGroup: GroupState = {
+      _id: freshID() as Group,
+      name,
+      members: [admin],
+      memberRoles: { [admin]: "ADMIN" },
+      requests: [],
+    };
+
+    await this.groups.insertOne(newGroup);
+    return { group: newGroup._id };
+  }
+
+  /**
+   * deleteGroup (group: Group)
+   * @requires the given `group` exists.
+   * @effects deletes the given `group` and its association with its members.
+   */
+  async deleteGroup(
+    { group }: { group: Group },
+  ): Promise<Empty | { error: string }> {
+    const result = await this.groups.deleteOne({ _id: group });
+    if (result.deletedCount === 0) {
+      return { error: "Group not found." };
+    }
+    return {};
+  }
+
+  /**
+   * renameGroup (group: Group, newName: String)
+   * @requires the given `group` exists and no other Group has the `newName`.
+   * @effects updates the `name` of the `group` to `newName`.
+   */
+  async renameGroup(
+    { group, newName }: { group: Group; newName: string },
+  ): Promise<Empty | { error: string }> {
+    const conflictingGroup = await this.groups.findOne({
+      name: newName,
+      _id: { $ne: group },
+    });
+    if (conflictingGroup) {
+      return { error: `A group with name '${newName}' already exists.` };
+    }
+
+    const result = await this.groups.updateOne({ _id: group }, {
+      $set: { name: newName },
+    });
+    if (result.matchedCount === 0) {
+      return { error: "Group not found." };
+    }
+    return {};
+  }
+
+  /**
+   * confirmRequest (group: Group, requester: User)
+   * @requires the given `group` exists and `group.requests` contains `requester`.
+   * @effects adds the `requester` to `group.members`, adds `requester` to `group.memberRoles` as `MEMBER`, deletes associated `requester` `group.requests`.
+   */
+  async confirmRequest(
+    { group, requester }: { group: Group; requester: User },
+  ): Promise<Empty | { error: string }> {
+    const result = await this.groups.updateOne(
+      { _id: group, requests: requester },
+      {
+        $addToSet: { members: requester },
+        $set: { [`memberRoles.${requester}`]: "MEMBER" },
+        $pull: { requests: requester },
+      },
+    );
+
+    if (result.matchedCount === 0) {
+      return { error: "Group not found or user has not requested to join." };
+    }
+    return {};
+  }
+
+  /**
+   * declineRequest (group: Group, requester: User)
+   * @requires the given `group` exists and `group.requests` contains `requester`.
+   * @effects deletes the `requester` from `group.requests`.
+   */
+  async declineRequest(
+    { group, requester }: { group: Group; requester: User },
+  ): Promise<Empty | { error: string }> {
+    const result = await this.groups.updateOne(
+      { _id: group, requests: requester },
+      { $pull: { requests: requester } },
+    );
+
+    if (result.matchedCount === 0) {
+      return { error: "Group not found or user has not requested to join." };
+    }
+    return {};
+  }
+
+  /**
+   * requestToJoin (group: Group, requester: User)
+   * @requires the given `group` exists and the `requester` isn't already in `group`.
+   * @effects creates request in `group.requests` for `requester`.
+   */
+  async requestToJoin(
+    { group, requester }: { group: Group; requester: User },
+  ): Promise<Empty | { error: string }> {
+    const groupDoc = await this.groups.findOne({ _id: group });
+    if (!groupDoc) {
+      return { error: "Group not found." };
+    }
+    if (groupDoc.members.includes(requester)) {
+      return { error: "User is already a member of this group." };
+    }
+    if (groupDoc.requests.includes(requester)) {
+      return { error: "User has already requested to join this group." };
+    }
+
+    await this.groups.updateOne({ _id: group }, {
+      $addToSet: { requests: requester },
+    });
+    return {};
+  }
+
+  /**
+   * adjustRole (group: Group, member: User, newRole: String)
+   * @requires `group` exists, `group.members` contains `member`, and `newRole` is `ADMIN` | `MEMBER`
+   * @effects updates `group.memberRoles` for `member` to be `newRole`
+   */
+  async adjustRole(
+    { group, member, newRole }: { group: Group; member: User; newRole: Role },
+  ): Promise<Empty | { error: string }> {
+    if (!ROLES.includes(newRole)) {
+      return {
+        error: `Invalid role: ${newRole}. Must be one of ${ROLES.join(", ")}.`,
+      };
+    }
+
+    const result = await this.groups.updateOne(
+      { _id: group, members: member },
+      { $set: { [`memberRoles.${member}`]: newRole } },
+    );
+
+    if (result.matchedCount === 0) {
+      return { error: "Group not found or user is not a member." };
+    }
+    return {};
+  }
+
+  /**
+   * removeMember (group: Group, member: User)
+   * @requires `group` exists, `group.members` contains `member`
+   * @effects remove `member` from `group.memberRoles`
+   * @note This implementation also removes the member from the `members` list and prevents removal of the last admin, aligning with the concept's principle of group management.
+   */
+  async removeMember(
+    { group, member }: { group: Group; member: User },
+  ): Promise<Empty | { error: string }> {
+    const groupDoc = await this.groups.findOne({ _id: group, members: member });
+    if (!groupDoc) {
+      return { error: "Group not found or user is not a member." };
+    }
+
+    // Prevent removal of the last admin to avoid orphaning the group.
+    if (groupDoc.memberRoles[member] === "ADMIN") {
+      const admins = Object.values(groupDoc.memberRoles).filter((role) =>
+        role === "ADMIN"
+      );
+      if (admins.length <= 1) {
+        return { error: "Cannot remove the last admin from a group." };
+      }
+    }
+
+    await this.groups.updateOne(
+      { _id: group },
+      {
+        $pull: { members: member },
+        $unset: { [`memberRoles.${member}`]: "" },
+      },
+    );
+
+    return {};
+  }
+
+  //
+  // QUERIES
+  //
+
+  /**
+   * _getMembers (group: Group): (members: set of User)
+   * @requires `group` exists
+   * @effects returns the set of all users in the `members` set of the given `group`
+   */
+  async _getMembers(
+    { group }: { group: Group },
+  ): Promise<{ members: User[] }[]> {
+    const groupDoc = await this.groups.findOne({ _id: group });
+    if (!groupDoc) {
+      return [];
+    }
+    return [{ members: groupDoc.members }];
+  }
+
+  /**
+   * _getGroups (): (groups: set of Group)
+   * @effects returns the set of `groups`
+   */
+  async _getGroups(): Promise<{ groups: Group[] }[]> {
+    const allGroups = await this.groups.find({}, { projection: { _id: 1 } })
+      .toArray();
+    const groupIds = allGroups.map((g) => g._id);
+    return [{ groups: groupIds }];
+  }
+
+  /**
+   * _isGroupMember (group: Group, user: User): (inGroup: bool)
+   * @requires `group` exists
+   * @effects returns true if `user` in `group.members` else false
+   */
+  async _isGroupMember(
+    { group, user }: { group: Group; user: User },
+  ): Promise<{ inGroup: boolean }[]> {
+    const groupDoc = await this.groups.findOne({ _id: group });
+    if (!groupDoc) {
+      return [];
+    }
+    const inGroup = groupDoc.members.includes(user);
+    return [{ inGroup }];
+  }
+
+  /**
+   * _getAdmins (group: Group): (admins: set of User)
+   * @requires `group` exists
+   * @effects returns the set of all users in the `admins` set of the given `group`
+   */
+  async _getAdmins({ group }: { group: Group }): Promise<{ admins: User[] }[]> {
+    const groupDoc = await this.groups.findOne({ _id: group });
+    if (!groupDoc) {
+      return [];
+    }
+    const admins = Object.entries(groupDoc.memberRoles)
+      .filter(([, role]) => role === "ADMIN")
+      .map(([user]) => user as User);
+    return [{ admins }];
+  }
+
+  /**
+   * _isGroupAdmin (group: Group, user: User): (isAdmin: bool)
+   * @requires `group` exists
+   * @effects returns true if `user` in `group.members` and has `ADMIN` in `group.memberRoles`.
+   */
+  async _isGroupAdmin(
+    { group, user }: { group: Group; user: User },
+  ): Promise<{ isAdmin: boolean }[]> {
+    const groupDoc = await this.groups.findOne({ _id: group });
+    if (!groupDoc) {
+      return [];
+    }
+    const isAdmin = groupDoc.members.includes(user) &&
+      groupDoc.memberRoles[user] === "ADMIN";
+    return [{ isAdmin }];
+  }
+
+  /**
+   * _getRequests (group: Group): (requestingUser: User)
+   * @requires `group` exists
+   * @effects returns the set of all users in the `requests` set of the given `group`
+   */
+  async _getRequests(
+    { group }: { group: Group },
+  ): Promise<{ requestingUser: User }[]> {
+    const groupDoc = await this.groups.findOne({ _id: group });
+    if (!groupDoc) {
+      return [];
+    }
+    return groupDoc.requests.map((u) => ({ requestingUser: u }));
+  }
+
+  /**
+   * _getGroupByName (name: String): (group: Group)
+   * @requires a group `g` with `g.name = name` exists
+   * @effects returns the group `g`
+   */
+  async _getGroupByName(
+    { name }: { name: string },
+  ): Promise<{ group: Group }[]> {
+    const groupDoc = await this.groups.findOne({ name });
+    if (!groupDoc) {
+      return [];
+    }
+    return [{ group: groupDoc._id }];
+  }
+
+  /**
+   * _getUserGroups (user: User): (group: set of Group)
+   * @requires `user` is a member within an existing group
+   * @effects returns set `group` such that each have `user` in `group.members`
+   */
+  async _getUserGroups(
+    { user }: { user: User },
+  ): Promise<{ group: Group[] }[]> {
+    const userGroups = await this.groups.find({ members: user }).toArray();
+    if (userGroups.length === 0) {
+      return [];
+    }
+    const groupIds = userGroups.map((g) => g._id);
+    return [{ group: groupIds }];
+  }
+}
+
+```
