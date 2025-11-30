@@ -67,7 +67,13 @@ export default class FriendingConcept {
       return { error: "Users are already friends." };
     }
 
-    const existingRequest = await this.pendingRequests.findOne({ requester, requestee });
+    // Check if there's a pending request going either way (requester -> requestee or requestee -> requester)
+    const existingRequest = await this.pendingRequests.findOne({
+      $or: [
+        { requester, requestee },
+        { requester: requestee, requestee: requester }
+      ]
+    });
     if (existingRequest) {
       return { error: "A friend request already exists." };
     }
