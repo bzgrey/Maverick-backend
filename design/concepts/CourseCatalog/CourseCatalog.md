@@ -9,11 +9,13 @@
     * a set of `days` (e.g., {Tuesday, Thursday})
     * a `startTime` of type `Time`
     * an `endTime` of type `Time`
+  * `Tag`: one of "HASS", "CI-M", "CI-H"
 
 **state**:
 * a set of Courses with 
 	* a name String
 	* a set of Events
+	* a set of Tags
 	* other information
 * a set of Events with 
 	* a Course (the course that this is part of)
@@ -21,7 +23,7 @@
 	* a MeetingTime
 
 **actions**:
-* `defineCourse (name: String, events: (Event, type: String, times: MeetingTime)[]): (course: Course)`
+* `defineCourse (name: String, tags: Tag[], events: (Event, type: String, times: MeetingTime)[]): (course: Course)`
     * **requires**: For each meeting time provided, `startTime < endTime`.  Course with given name doesn't exist
     * **effects**: Creates a new course in the set of Courses with defined lecture and optional recitation and lab times. This is typically an administrative action. 
 * removeCourse (course: Course)
@@ -29,9 +31,9 @@
 	* effects: removes course from set of course and each of its events from the set of events
 
 **queries:** 
-* `_getAllCourses (): (courses: (course, name: String, events: (Event, type: String, times: MeetingTime))[])`
+* `_getAllCourses (): (courses: (course, name: String, tags: Tag[], events: (Event, type: String, times: MeetingTime))[])`
     * **effects**: Returns all `Courses` in the catalog with their information.
-* \_getCourseInfo (courses: Course\[]): (name: String, events: (Event, type: String, times: MeetingTime))\[]
+* \_getCourseInfo (courses: Course\[]): (name: String, tags: Tag[], events: (Event, type: String, times: MeetingTime))\[]
 	* **requires:** courses exist
 	* **effects:** returns the course info for each course
 * \_getEventInfo (event: Event): (event: Event, name: String, type: String, times: MeetingTime)\[]

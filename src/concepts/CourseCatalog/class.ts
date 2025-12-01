@@ -503,10 +503,11 @@ export class Class {
 
   /**
    * Convert this Class to the format expected by CourseCatalogConcept.defineCourse
-   * @returns Object with name and events array formatted for defineCourse
+   * @returns Object with name, tags, and events array formatted for defineCourse
    */
   toDefineCourseFormat(): {
     name: string;
+    tags: string[];
     events: {
       type: string;
       times: { days: string[]; startTime: string; endTime: string };
@@ -564,8 +565,22 @@ export class Class {
       }
     }
 
+    // Build tags array from flags
+    const tags: string[] = [];
+    const classFlags = this.flags;
+    if (classFlags.hass) {
+      tags.push("HASS");
+    }
+    if (classFlags.cim) {
+      tags.push("CI-M");
+    }
+    if (classFlags.cih || classFlags.cihw) {
+      tags.push("CI-H");
+    }
+
     return {
-      name: this.number + ":" + this.name, // Use course number as name (e.g., "8.05")
+      name: this.number + ": " + this.name, // Use course number as name (e.g., "8.05")
+      tags,
       events,
     };
   }

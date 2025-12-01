@@ -28,6 +28,7 @@ interface MeetingTime {
 interface CourseDoc {
   _id: Course;
   name: string;
+  tags: string[];
   events: Event[];
 }
 
@@ -72,8 +73,9 @@ export default class CourseCatalogConcept {
    * **effects**: Creates a new course in the set of Courses with defined lecture and optional recitation and lab times. This is typically an administrative action.
    */
   async defineCourse(
-    { name, events }: {
+    { name, tags, events }: {
       name: string;
+      tags: string[];
       events: { type: string; times: MeetingTime }[];
     },
   ): Promise<{ course: Course } | { error: string }> {
@@ -115,6 +117,7 @@ export default class CourseCatalogConcept {
     const newCourseDoc: CourseDoc = {
       _id: newCourseId,
       name,
+      tags,
       events: newEventIds,
     };
 
@@ -158,6 +161,7 @@ export default class CourseCatalogConcept {
   async _getAllCourses(): Promise<{
     course: Course;
     name: string;
+    tags: string[];
     events: { event: Event; type: string; times: MeetingTime }[];
   }[]> {
     const pipeline = [
@@ -174,6 +178,7 @@ export default class CourseCatalogConcept {
           _id: 0,
           course: "$_id",
           name: "$name",
+          tags: "$tags",
           events: {
             $map: {
               input: "$eventDetails",
@@ -191,6 +196,7 @@ export default class CourseCatalogConcept {
     return await this.courses.aggregate(pipeline).toArray() as {
       course: Course;
       name: string;
+      tags: string[];
       events: { event: Event; type: string; times: MeetingTime }[];
     }[];
   }
@@ -203,6 +209,7 @@ export default class CourseCatalogConcept {
    */
   async _getCourseInfo({ courses }: { courses: Course[] }): Promise<{
     name: string;
+    tags: string[];
     events: { event: Event; type: string; times: MeetingTime }[];
   }[]> {
     const pipeline = [
@@ -223,6 +230,7 @@ export default class CourseCatalogConcept {
         $project: {
           _id: 0,
           name: "$name",
+          tags: "$tags",
           events: {
             $map: {
               input: "$eventDetails",
@@ -239,6 +247,7 @@ export default class CourseCatalogConcept {
     ];
     return await this.courses.aggregate(pipeline).toArray() as {
       name: string;
+      tags: string[];
       events: { event: Event; type: string; times: MeetingTime }[];
     }[];
   }
