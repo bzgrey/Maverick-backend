@@ -136,6 +136,17 @@ export default class CourseCatalogConcept {
   }
 
   /**
+   * removeAllCourses ()
+   *
+   * **effects**: removes all courses and their associated events from the catalog
+   */
+  async removeAllCourses(): Promise<Empty> {
+    await this.courses.deleteMany({});
+    await this.events.deleteMany({});
+    return {};
+  }
+
+  /**
    * removeCourse (course: Course)
    *
    * **requires**: course exists
