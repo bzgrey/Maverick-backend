@@ -86,9 +86,10 @@ export default class CourseCatalogConcept {
   ): Promise<{ course: Course } | { error: string }> {
     // Requires: Course with given name doesn't exist
     const existingCourse = await this.courses.findOne({ name });
-    if (existingCourse) {
-      return { error: `Course with name '${name}' already exists` };
-    }
+    // if (existingCourse) {
+
+    // return { error: `Course with name '${name}' already exists` };
+    // }
 
     // Requires: For each meeting time provided, startTime < endTime
     for (const event of events) {
@@ -104,12 +105,13 @@ export default class CourseCatalogConcept {
     }
 
     // Effects: Creates a new course and its associated events
-    const newCourseId = freshID() as Course;
-    const newEventDocs: EventDoc[] = [];
-    const newEventIds: Event[] = [];
+    let newCourseId = freshID() as Course;
+    let newEventDocs: EventDoc[] = [];
+    let newEventIds: Event[] = [];
 
     for (const event of events) {
       const newEventId = freshID() as Event;
+
       newEventIds.push(newEventId);
       newEventDocs.push({
         _id: newEventId,
