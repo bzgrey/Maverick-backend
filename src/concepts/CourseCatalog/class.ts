@@ -773,17 +773,27 @@ export const classObjects = Array.from(classesMap.values()).map((rawClass) =>
 // console.log(classObjects);
 
 // Test the new methods
-
 for (const classobj of classObjects) {
-  // if (classobj.number === "8.05") {
-  //   console.log("Course:", classobj.number);
-  //   console.log("\ntoDefineCourseFormat():");
-  //   console.log(JSON.stringify(classobj.toDefineCourseFormat(), null, 2));
+  // if (classobj.number === "6.1210") {
+  // console.log("Course:", classobj.number);
+  // console.log("\ntoDefineCourseFormat():");
+  const classFormat = classobj.toDefineCourseFormat();
+  // console.log(JSON.stringify(classobj.toDefineCourseFormat(), null, 2));
 
-  //   console.log("\ngetAllSectionTimes():");
-  //   console.log(JSON.stringify(classobj.getAllSectionTimes(), null, 2));
+  // console.log("\ngetAllSectionTimes():");
+  // console.log(JSON.stringify(classobj.getAllSectionTimes(), null, 2));
+  const uniqueEvents = Array.from(
+    new Map(classFormat.events.map((e) => [JSON.stringify(e), e])).values(),
+  );
+  // console.log("\nUnique Events:");
+  // console.log(JSON.stringify(uniqueEvents, null, 2));
+  classFormat.events = uniqueEvents;
+  // console.log("\nFinal classFormat with unique events:");
+  // console.log(JSON.stringify(classFormat, null, 2));
+
   // }
   // console.log(JSON.stringify(classobj, null, 2));
   // console.log(classobj.toDefineCourseFormat());
-  await CourseCatalog.defineCourse(classobj.toDefineCourseFormat());
+  await CourseCatalog.defineCourse(classFormat);
+  // }
 }

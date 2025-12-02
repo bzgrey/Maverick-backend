@@ -61,6 +61,8 @@ export const exclusions: Array<string> = [
   "/api/Scheduling/_getScheduleComparison",
   "/api/CourseCatalog/timeToMinutes",
   "/api/CourseCatalog/defineCourse",
+  "/api/CourseCatalog/removeAllCourses",
+  "/api/CourseCatalog/removeCourse",
   // Friending routes handled by syncs
   "/api/Friending/requestFriend",
   "/api/Friending/acceptFriend",
