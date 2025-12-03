@@ -13,3 +13,6 @@
 ## Beta submission
 - [Screen Recording](https://drive.google.com/file/d/1K5lM2ALSKrFpCg2pQRcyWDUQgnANOr1K/view?usp=drive_link)
 - [Development Plan Update](design/FunctionalDesign/DevelopmentPlan.md)
+
+## User Testing
+- [Task List](user-testing/test-tasks.md)
