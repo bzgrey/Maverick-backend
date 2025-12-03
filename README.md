@@ -9,3 +9,7 @@
 
 - [Screen Recording](screen-recording-alpha.mov)
 - [Development Plan Update](design/FunctionalDesign/DevelopmentPlan.md)
+
+## Beta submission
+- [Screen Recording](https://drive.google.com/file/d/1K5lM2ALSKrFpCg2pQRcyWDUQgnANOr1K/view?usp=drive_link)
+- [Development Plan Update](design/FunctionalDesign/DevelopmentPlan.md)
