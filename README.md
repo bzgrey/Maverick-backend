@@ -18,3 +18,7 @@
 - [Task List](user-testing/test-tasks.md)
 - [userTestingReportTest1](user-testing/userTestingReportTest1.md)
 - [userTestingReportTest2](user-testing/userTestingReportTest2.md)
+
+
+## Weekly Progress
+https://docs.google.com/document/d/1fBkw4vPdtD2IAGbrnvp8nLchiBuFZC35CkJKPKTtbkM/edit?usp=sharing
