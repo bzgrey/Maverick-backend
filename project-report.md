@@ -2,11 +2,23 @@
 
 ## Design Summary
 
+**Concept Architecture**
+We refactored the original `CourseScheduling` concept by splitting it into two distinct concepts: `Scheduling` and `CourseCatalogue`, and added course information and tags to the latter. This separation allows for cleaner handling of static course data versus dynamic user events. Additionally, we explicitly integrated `UserAuthentication` and `Sessioning` concepts to manage secure access and friend-specific visibility.
+Additionally, we removed "removeAdmin" from the UI so that admins can't remove themselves and make the group they're in static, meaning pending joins are always pending as the group is adminless.
+
+**User Interface & Visualization Strategy**
+*   **Comparison Limits:** Addressing our original risk regarding visual complexity, we restricted the schedule comparison feature to display a maximum of three users simultaneously (the user plus two others) to prevent the calendar from becoming unreadable.
+*   **Visual Affordance:** We pivoted away from simple "schedule diffs" (side-by-side views). Instead, we implemented a unified view where identical course events are combined into single blocks split by color. Furthermore, for the home page, we simplified the grid of blocks to just two blocks containing group-related items and friending buttons next to the username using a common symbol associated with the concept of friending. Additionally, we changed the color indicating the likelihood to take a course from green, which is the same as some course blocks displayed on the calendar view, to blue so that there's no confusion. Lastly, after user testing, we added a hover option over courses added to the calendar view that shows what friends, group members also have that event in their schedules such that users don't have to scroll down to the course info component to look at that crucial information. 
+*   **Preferencing:** We added visual indicators to the UI representing the `Preferencing` concept, allowing users to see not just confirmed classes, but also courses friends are "likely" or "maybe" taking.
+
+**Data Granularity**
+We enhanced the backend parsing scripts to support variable event types. The system now distinguishes between Lectures, Recitations, Labs,  allowing for more accurate filtering and display compared to the generic time blocks originally planned.
+
 ## Reflections
 ### Benny
 As part of this project I learned and improved on many things. I improved on my ability to code concepts and syncs, and use the concept tool in the process. I also gained important experience in working in a team on building a webapp. I have also improved on my ability to use llms affectively while coding. I have enjoyed this process of working with a team and found that it is much more manageable than working individually on a project.
 
-**Yabetse**
+### Yabetse
 
 **Difficulties:
 
@@ -39,4 +51,8 @@ AI thoughts:
 
 - I feel like as a developer learning about software AI usage at times did hinder learning as I felt that I could get away with a very basic understanding of full stack development
     
-- However, it made creating an app much more fritionless and enjoyable as our ambitious ideas could come to life with less resistance than if we coded our entire code base independently**
+- However, it made creating an app much more frictionless and enjoyable as our ambitious ideas could come to life with less resistance than if we coded our entire code base independently**
+
+### Betsegaw 
+
+It sounds trite, but I learned the immense value of building incrementally (with concepts and syncs), especially when coding with LLMs (claude sonnet 4.5) and building more complex applications. Even with modular modifications there was sometimes a gap between what I said and meant by a prompt and what the LLM coded, so I can only imagine the difficulty in aligning my design choices and structure of the code if I weren't building incrementally. Secondly, I noticed unquantifiable but noticeable differences in how well different models executed my prompts. For the individual project, I used GPT 5 mostly, and it worked okay, but it seemed like Claude Sonnet 4.5 worked better. It could just be a placebo effect of knowing that Claude Sonnet 4.5 performed better on some benchmarks than GPT-5 did, as published by their respective developers. Additionally, I learned from our last meeting with Eagon before user testing that showing in the UI as simply and explicitly as possible what the purpose of an app is. For our case, coordinating schedules with friends and group members, so making the small design choice to group shared class blocks together made a significant difference in how fast users of the app would understand what the app's purpose is and how to use it. Morever, since our team made a good-faith attempt at thinking through all the possible problems we wanted to work on during the Problem Framing phase, we were to create a viable product and a product for which there is real need for, which served as more motivation to create a well-designed app. However in this experimental process of using LLMs for coding, I found myself thinking "the more the LLM is the one explicitly writing most of the code, the less need/want for me to intervene." Since I didn't know the codebase as well as I would have had I coded it myself entirely/mostly, even when intervention was warranted I hesitated thinking that it would take too much time to sift through all of the code, so if after inputting some error the LLM quickly seemed to fix it, I didn't fully check its solution.  I also liked the context tool and using Obsidian to control the context that an LLM uses, as it still maintains the speed benefit of crafting code, etc.. while giving control back to the user through management of context.
