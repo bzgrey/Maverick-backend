@@ -22,3 +22,6 @@
 
 ## Weekly Progress
 https://docs.google.com/document/d/1fBkw4vPdtD2IAGbrnvp8nLchiBuFZC35CkJKPKTtbkM/edit?usp=sharing
+
+## Project Report
+- [Project report](project-report.md)
